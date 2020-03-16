@@ -1,0 +1,32 @@
+<form col="2" initial-activity="initial-activity" >
+    <control type="select-multiple" title="funds" name="funds" items="fundList" option-value="fundId" option-title="fundName" />
+    <control type="select" title="branches" name="branch" items="branchList" option-value="branchId" option-title="branchName" />
+    <control type="date" title="end-date" name="end-date" />
+    <control type="date" title="start-date" name="start-date" />
+    <control type="text" title="name" name="name" />
+    <control type="end-row"/>
+    <control type="checkbox" title="by-previous-quotes" name="by-previous-quotes" />
+    <control type="empty"/>
+    <control type="checkbox" title="by-opening-quotes" name="by-opening-quotes" default="checked"/>
+    <control type="end-row"/>
+    <control type="reset" title="reset"/>
+    <control type="submit" title="save" activity="subsidiary-ledger-report"/>
+</form>
+
+<activities>
+    <activity name="initial-activity">
+        <operation order="1" type="ajax" url="common/fund/list" var="fundList" />
+        <operation order="2" type="ajax" url="common/branch/list" var="branchList" />
+    </activity>
+
+    <activity name="subsidiary-ledger-report">
+        <operation order="1" type="ajax" url="subsidiary-ledger/create/map-list">
+            <script>
+                success = function(data) {
+                }
+                error = function(error) {
+                }
+            </script>
+        </operation>
+    </activity>
+</activities>

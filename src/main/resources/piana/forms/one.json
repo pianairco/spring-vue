@@ -1,0 +1,63 @@
+{
+  "type": "persist",
+  "theme": "theme-a",
+  "title": "subsidiaryLedgerReport.title",
+  "control-in-row": 2,
+  "control": [
+    { "type": "select-multiple", "title": "controls.funds", "name": "fund-id", "items": "fundList", "option-value": "fundId", "option-title": "fundName" },
+    { "type": "select", "title": "controls.branches", "name": "branch-id", "items": "branchList", "option-value": "branchId", "option-title": "branchName" },
+    { "type": "select", "title": "controls.natures", "name": "nature-id", "items": "natureList", "option-value": "id", "option-title": "title" },
+    { "type": "empty" },
+    { "type": "date", "title": "controls.start-date", "name": "start-date", "required": true },
+    { "type": "date", "title": "controls.end-date", "name": "end-date", "required": true },
+    { "type": "number", "title": "controls.gl-number", "name": "gl-number" },
+    { "type": "empty" },
+    { "type": "text", "name": "title", "title": "controls.start-voucher-number" },
+    { "type": "empty" },
+    { "type": "checkbox", "title": "controls.by-previous-quotes", "name": "by-previous-quotes", "default": "checked" },
+    { "type": "checkbox", "title": "controls.by-opening-quotes", "name": "by-opening-quotes", "default": "checked" },
+    { "type": "reset", "title": "clear" },
+    { "type": "submit", "title": "submit", "activities": [ "subsidiary-ledger-report" ] }
+  ],
+  "data": [
+    { "name": "natureList", "query-name": "select-nature" },
+    { "name": "fundList", "query-name": "select-fund-list" },
+    { "name": "branchList", "query-name": "select-branch-list" },
+    { "name": "generalLedgerList", "query-name": "select-general-ledger-list" },
+    { "name": "subsidiaryLedgerList", "query-name": "select-subsidiary-ledger-list" }
+  ],
+  "decorator": "org.broker.web.ledger.SubsidiaryLedgerReportDecorator",
+  "rowPerPageParamName": "rowPerPage",
+  "table-activity": "subsidiary-ledger-report",
+  "columns": [
+    { "property": "voucherDate", "title": "voucher-date", "type": "date" },
+    { "property": "fundId", "title": "fund-id", "type": "number", "sortable": "true" },
+    { "property": "voucherNumber", "title": "voucher-number", "type": "number" },
+    { "property": "voucherTempNumber", "title": "temp-number", "type": "number" },
+    { "property": "comments", "title": "comments", "type": "string" },
+    { "property": "debitAmount", "title": "debit-amount", "type": "number", "sortable": "true" },
+    { "property": "creditAmount", "title": "credit-amount", "type": "number", "sortable": "true" },
+    { "property": "remainder", "title": "remainder", "type": "string" },
+    { "property": "status", "title": "status", "type": "string" },
+    { "property": "branchName", "title": "branch-name", "type": "string" }
+  ],
+  "footers": [
+    {
+      "order":  1,
+      "caption":  "footer.sum",
+      "columns": [
+        { "property": "debitAmount", "operation": "sum" },
+        { "property": "creditAmount", "operation": "sum" }
+      ]
+    }
+  ],
+  "activities": [
+    {
+      "name": "subsidiary-ledger-report",
+      "table-source-name": "select-normal-conditioned-subsidiary-amount",
+      "operations": [
+        { "order":  "1", "type": "function", "name": "createSubsidiaryLedgerMapList" }
+      ]
+    }
+  ]
+}
