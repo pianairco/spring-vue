@@ -1,3 +1,4 @@
+
 Vue.component('one', {
     data: function () {
         return {
@@ -10,12 +11,9 @@ Vue.component('one', {
     },
     methods: {
         x: function () {
-            axios
-                .post('/action', this.user, {
-                    headers: { "action": "one", "activity": "x" }
-                })
+            axios.post('/action', this.user, {headers: {"action": "one", "activity": "x"}})
                 .then((response) => { this.message = response.data; })
-                .catch((err) =>  { this.message = err; });
+                .catch((err) => { this.message = err; });
         }
     },
     template: '<div><h1>{{ message }}</h1><input type="text" v-model="user.firstName" /><input type="text" v-model="user.lastName" /><button v-on:click="x()" >ok</button></div>'
