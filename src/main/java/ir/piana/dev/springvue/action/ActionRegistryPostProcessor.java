@@ -1,5 +1,6 @@
 package ir.piana.dev.springvue.action;
 
+import ir.piana.dev.springvue.core.reflection.VUModuleInstaller;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -7,17 +8,23 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProce
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 @Component
 public class ActionRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor {
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)
             throws BeansException {
+        Map<String, String> beanMap = VUModuleInstaller.getInstance().getBeanMap();
+        for(String key : beanMap.keySet()) {
+            RootBeanDefinition beanDefinition =
+                    new RootBeanDefinition(key);
+            registry.registerBeanDefinition(beanMap.get(key), beanDefinition);
+        }
 
-        RootBeanDefinition beanDefinition =
-                new RootBeanDefinition("ir.piana.dev.springvue.action.ActionOne"); //The service implementation
+
 //        serviceDefinition.setTargetType(MyService.class); //The service interface
 //        serviceDefinition.setRole(BeanDefinition.ROLE_APPLICATION);
-        registry.registerBeanDefinition("one", beanDefinition);
     }
 
     @Override

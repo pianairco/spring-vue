@@ -23,8 +23,9 @@ public class SpringVueApplication {
 //			e.printStackTrace();
 //		}
 
-		String component = VUModuleInstaller.getInstance()
-				.compile(SpringVueApplication.class.getResourceAsStream("/piana/forms/one.vue.jsp"));
+		VUModuleInstaller.getInstance()
+				.compile(SpringVueApplication.class.getResourceAsStream("/piana/forms/one.vue.jsp"))
+				.compile(SpringVueApplication.class.getResourceAsStream("/piana/forms/two.vue.jsp"));
 
 		SpringApplication.run(SpringVueApplication.class, args);
 	}
