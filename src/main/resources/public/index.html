@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spring-Vue</title>
+<!--    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>-->
+    <script src="js/vue/vue.js"></script>
+    <script src="js/axios/axios.js"></script>
+<!--    <script src="/vu-app" type="application/javascript"></script>-->
+<!--    <script src="js/vue/app.js"></script>-->
+    <script src="https://cdn.jsdelivr.net/npm/moment"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment-jalaali@0.7.4/build/moment-jalaali.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue-persian-datetime-picker/dist/vue-persian-datetime-picker-browser.js"></script>
+
+<body>
+
+
+<div>
+    <div id="app">
+<!--        <h1>{{ message }}</h1>-->
+<!--        <date-picker v-model="date"></date-picker>-->
+
+
+    </div>
+</div>
+
+<script rel="script" type="application/javascript">
+    Vue.component('v-link', {
+        template: '<a v-bind:href="href" v-bind:class="{ active: isActive }" v-on:click="go"><slot></slot></a>',
+        props: {
+            href: {
+                type:String,
+                required: true
+            }
+        },
+        computed: {
+            isActive () {
+                return this.href === this.$root.currentRoute
+            }
+        },
+        methods: {
+            go (event) {
+                event.preventDefault()
+                this.$root.currentRoute = this.href
+                console.log(this.$root.currentRoute);
+                if(this.$root.currentRoute.startsWith('/#'))
+                    this.$root.currentRoute = this.$root.currentRoute.substring(3);
+                console.log(this.$root.currentRoute);
+                window.history.pushState(
+                    null,
+                    this.href,
+                    routes[this.$root.currentRoute]
+                )
+            }
+        }
+    });
+
+    var one = Vue.component('one', {
+        template: '<div><h1>{{ message }}</h1><input type="text" v-model="user.firstName" /><input type="text" v-model="user.lastName" /><button >ok</button><v-link href="/#/two">Home</v-link></div>',
+        data: function() {
+            return {
+                user: {
+                    firstName: '',
+                    lastName: ''
+                },
+                message: 'Hello To Spring Vue'
+            }
+        },
+        methods: {
+        }
+    });
+
+    console.log(one);
+
+    var two = Vue.component('two', {
+        template: '<div><h1>{{ message }}</h1><button >ok</button></div>',
+        data: function () {
+            return {
+                message: 'Hello To Spring Vue'
+            }
+        },
+        methods: {
+        }
+    });
+
+    console.log(two);
+
+    const NotFound = { template: '<p>Page not found</p>' }
+
+    const routes = {
+        '/': one,
+        '/two': two
+    };
+
+    var app = new Vue({
+        el: '#app',
+        data: {
+            currentRoute: window.location.hash,
+            message: 'Hello To Spring Vue',
+        },
+        created: function () {
+            console.log("create");
+            console.log(window.location);
+            console.log(window.location.hash);
+            console.log(window.location.pathname);
+            console.log(this.currentRoute);
+        },
+        computed: {
+            ViewComponent() {
+                if(this.currentRoute === '')
+                    return routes['/'] || NotFound
+                else if(this.currentRoute.startsWith('#')) {
+                    return routes[this.currentRoute.substring(1)] || NotFound;
+                }
+            }
+        },
+        render(h) {
+            return h(this.ViewComponent)
+        }
+    });
+</script>
+</body>
+</html>
