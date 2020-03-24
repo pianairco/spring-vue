@@ -1,24 +1,17 @@
-<app name="one"></app>
+<app name="three"></app>
 
 <template>
 <div>
     <h1>{{ message }}</h1>
-    <input type="text" v-model="user.firstName" />
-    <input type="text" v-model="user.lastName" />
     <button v-on:click="x()" >ok</button>
-    <two></two>
 </div>
 </template>
 
 <script>
     Vue.component('$app$', {
         template: '$template$',
-        data: function() {
+        data: function () {
             return {
-                user: {
-                    firstName: '',
-                    lastName: ''
-                },
                 message: 'Hello To Spring Vue'
             }
         },
@@ -26,10 +19,10 @@
             x: function () {
                 axios.post('/action', this.user, {headers: {"action": "$bean$", "activity": "x"}})
                     .then((response) => { this.message = response.data; })
-                    .catch((err) => { this.message = err; });
+            .catch((err) => { this.message = err; });
             }
         }
-    });
+    })
 </script>
 
 <bean>
@@ -52,11 +45,12 @@
                 public Function<RequestEntity, ResponseEntity> x = (r) -> {
                     List<Object> objects = sqlExecuter.executeQuery("select * from users");
                     Map body = (Map) r.getBody();
-                    String firstName = (String)body.get("firstName");
-                    String lastName = (String)body.get("lastName");
-                    return ResponseEntity.ok("Hello ".concat(firstName).concat(" ").concat(lastName));
+                    return ResponseEntity.ok("Good By Friend!");
                 };
             }
         %>
     </action>
 </bean>
+
+
+

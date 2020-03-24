@@ -1,4 +1,4 @@
-package ir.piana.dev.springvue.action;
+package ir.piana.dev.springvue.core.action;
 
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;

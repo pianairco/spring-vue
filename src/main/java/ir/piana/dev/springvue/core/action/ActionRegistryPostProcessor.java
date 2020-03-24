@@ -1,6 +1,5 @@
-package ir.piana.dev.springvue.action;
+package ir.piana.dev.springvue.core.action;
 
-import ir.piana.dev.springvue.core.reflection.VUModuleInstaller;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -15,7 +14,7 @@ public class ActionRegistryPostProcessor implements BeanDefinitionRegistryPostPr
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)
             throws BeansException {
-        Map<String, String> beanMap = VUModuleInstaller.getInstance().getBeanMap();
+        Map<String, String> beanMap = ActionInstaller.getInstance().getBeanMap();
         for(String key : beanMap.keySet()) {
             RootBeanDefinition beanDefinition =
                     new RootBeanDefinition(key);

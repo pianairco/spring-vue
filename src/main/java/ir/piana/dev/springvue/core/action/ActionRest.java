@@ -1,6 +1,5 @@
-package ir.piana.dev.springvue.rest;
+package ir.piana.dev.springvue.core.action;
 
-import ir.piana.dev.springvue.action.Action;
 import ir.piana.dev.springvue.core.sql.SQLExecuter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -10,17 +9,18 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.util.List;
 import java.util.function.Function;
 
 @Controller
-public class TestRest {
+public class ActionRest {
     @Autowired
     private ApplicationContext сontext;
 
-    @GetMapping(path = "test")
-    public ResponseEntity<String> test(RequestEntity requestEntity) {
-        return ResponseEntity.ok("hello");
+    @GetMapping(value = "/vu-app", produces = "text/javascript; charset=UTF-8")
+    public ResponseEntity getVueApp() throws ParserConfigurationException {
+        return ResponseEntity.status(200).body(ActionInstaller.getInstance().getAppBuffer());
     }
 
     @PostMapping(path = "action")
@@ -40,14 +40,14 @@ public class TestRest {
                 }
             }
         }
-        return x.apply(requestEntity);
+        return notFound.apply(requestEntity);
     }
 
     @Autowired
     private SQLExecuter sqlExecuter;
 
-    Function<RequestEntity, ResponseEntity> x = (r) -> {
+    Function<RequestEntity, ResponseEntity> notFound = (r) -> {
         sqlExecuter.toString();
-        return ResponseEntity.ok("Hello World");
+        return ResponseEntity.status(404).body("Not Found");
     };
 }

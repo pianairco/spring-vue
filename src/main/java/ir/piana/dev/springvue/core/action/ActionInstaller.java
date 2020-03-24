@@ -1,5 +1,6 @@
-package ir.piana.dev.springvue.core.reflection;
+package ir.piana.dev.springvue.core.action;
 
+import ir.piana.dev.springvue.core.reflection.ClassGenerator;
 import org.apache.commons.io.IOUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -10,8 +11,6 @@ import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
@@ -22,9 +21,9 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-public class VUModuleInstaller {
+public class ActionInstaller {
     private DocumentBuilder dBuilder;
-    private static VUModuleInstaller vuModuleInstaller = null;
+    private static ActionInstaller actionInstaller = null;
     private Properties prop = null;
     private StringBuffer buffer = new StringBuffer();
     private Map<String, String> beanMap = new LinkedHashMap<>();
@@ -37,7 +36,7 @@ public class VUModuleInstaller {
     private static long counter = 1;
     private static final String baseBeanName = "springVue";
 
-    public VUModuleInstaller(DocumentBuilder dBuilder, Properties prop) {
+    public ActionInstaller(DocumentBuilder dBuilder, Properties prop) {
         this.dBuilder = dBuilder;
         this.prop = prop;
     }
@@ -53,23 +52,23 @@ public class VUModuleInstaller {
         return sb.toString();
     }
 
-    public static synchronized VUModuleInstaller getInstance() {
-        if (vuModuleInstaller != null)
-            return vuModuleInstaller;
-        try (InputStream input = VUModuleInstaller.class.getResourceAsStream("/spring-vue.properties")) {
+    public static synchronized ActionInstaller getInstance() {
+        if (actionInstaller != null)
+            return actionInstaller;
+        try (InputStream input = ActionInstaller.class.getResourceAsStream("/spring-vue.properties")) {
             Properties prop = new Properties();
             // load a properties file
             prop.load(input);
-            vuModuleInstaller = new VUModuleInstaller(DocumentBuilderFactory.newInstance()
+            actionInstaller = new ActionInstaller(DocumentBuilderFactory.newInstance()
                     .newDocumentBuilder(), prop);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
 
-        return vuModuleInstaller;
+        return actionInstaller;
     }
 
-    public VUModuleInstaller compile(InputStream inputStream) {
+    public ActionInstaller compile(InputStream inputStream) {
         String error = null;
         String jsApp = null;
         try {

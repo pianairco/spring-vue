@@ -34,7 +34,7 @@
         <%@ page import="java.util.function.Function" %>
         <%@ page import="java.util.List" %>
         <%@ page import="java.util.Map" %>
-        <%@ page import="ir.piana.dev.springvue.action.Action" %>
+        <%@ page import="ir.piana.dev.springvue.core.action.Action" %>
     </import>
     <action>
         <%
@@ -45,7 +45,7 @@
                 public Function<RequestEntity, ResponseEntity> x = (r) -> {
                     List<Object> objects = sqlExecuter.executeQuery("select * from users");
                     Map body = (Map) r.getBody();
-                    return ResponseEntity.ok("good by Friend!");
+                    return ResponseEntity.ok("Hello Friend!");
                 };
             }
         %>
