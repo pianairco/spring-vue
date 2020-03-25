@@ -13,6 +13,7 @@ public class SpringVueApplication {
 
 	public static void main(String[] args) throws ParserConfigurationException {
 		ActionInstaller.getInstance()
+				.component(SpringVueApplication.class.getResourceAsStream("/piana/component/menu.vue.jsp"))
 				.component(SpringVueApplication.class.getResourceAsStream("/piana/component/one.vue.jsp"))
 				.component(SpringVueApplication.class.getResourceAsStream("/piana/component/two.vue.jsp"))
 				.component(SpringVueApplication.class.getResourceAsStream("/piana/component/three.vue.jsp"))

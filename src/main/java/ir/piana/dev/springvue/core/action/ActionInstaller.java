@@ -184,13 +184,22 @@ public class ActionInstaller {
             }
 
             String templateString = theString.substring(theString.indexOf("<template>") + 10, theString.indexOf("</template>"));
-
-            String pageComponent = "var $app$ = Vue.component('$app$', { template: '$template$' });";
-            pageComponent = pageComponent.replaceAll("\\$app\\$", pageName);
-            pageComponent = pageComponent.replaceAll("\\$template\\$",
-                    Arrays.stream(templateString.split(System.getProperty("line.separator")))
-                            .map(line -> line.trim()).collect(Collectors.joining("")));
-            buffer.append(pageComponent).append("\n");
+            if(theString.contains("<script>")) {
+                String scriptString = theString.substring(theString.indexOf("<script>") + 8, theString.indexOf("</script>"));
+                StringBuffer jsAppBuffer = new StringBuffer();
+                String jsApp = jsAppBuffer.append(scriptString).toString().replaceAll("\\$app\\$", pageName)
+                        .replace("$template$",
+                                Arrays.stream(templateString.split(System.getProperty("line.separator")))
+                                        .map(line -> line.trim()).collect(Collectors.joining("")));
+                buffer.append(jsApp).append("\n");
+            } else {
+                String pageComponent = "var $app$ = Vue.component('$app$', { template: '$template$' });";
+                pageComponent = pageComponent.replaceAll("\\$app\\$", pageName);
+                pageComponent = pageComponent.replaceAll("\\$template\\$",
+                        Arrays.stream(templateString.split(System.getProperty("line.separator")))
+                                .map(line -> line.trim()).collect(Collectors.joining("")));
+                buffer.append(pageComponent).append("\n");
+            }
             routeMap.put(pagePath, pageName);
         } catch (IOException e) {
             error = e.getMessage();
