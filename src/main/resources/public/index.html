@@ -44,12 +44,17 @@
                 this.$root.currentRoute = this.href
                 console.log(this.$root.currentRoute);
                 if(this.$root.currentRoute.startsWith('/#'))
-                    this.$root.currentRoute = this.$root.currentRoute.substring(3);
+                    this.$root.currentRoute = this.$root.currentRoute.substring(2);
+                console.log("___")
                 console.log(this.$root.currentRoute);
+                console.log(routes);
+                console.log(routes[this.$root.currentRoute]);
+                console.log(this.href);
+                console.log("___")
                 window.history.pushState(
                     null,
-                    this.href,
-                    routes[this.$root.currentRoute]
+                    routes[this.$root.currentRoute],
+                    this.href
                 )
             }
         }
@@ -111,6 +116,8 @@
                     return routes['/'] || NotFound
                 else if(this.currentRoute.startsWith('#')) {
                     return routes[this.currentRoute.substring(1)] || NotFound;
+                } else {
+                    return routes[this.currentRoute] || NotFound;
                 }
             }
         },
