@@ -24,9 +24,32 @@ import java.util.stream.Collectors;
 public class ActionInstaller {
     private DocumentBuilder dBuilder;
     private static ActionInstaller actionInstaller = null;
+    private static String appComponent = "var app = new Vue({\n" +
+            "        el: '#app',\n" +
+            "        data: {\n" +
+            "            currentRoute: window.location.hash\n" +
+            "        },\n" +
+            "        created: function () {console.log(\"create\");console.log(window.location);console.log(window.location.hash);console.log(window.location.pathname);console.log(this.currentRoute);},\n" +
+            "        computed: {ViewComponent() {if(this.currentRoute === '')return routes['/'] || NotFound;else if(this.currentRoute.startsWith('#'))return routes[this.currentRoute.substring(1)] || NotFound;else return routes[this.currentRoute] || NotFound;}},\n" +
+            "        render(h) {return h(this.ViewComponent)}\n" +
+            "    });";
+    private static String notFoundComponent = "const NotFound = { template: '<p>Page not found</p>' }";
+    private static String vLinkComponent = "Vue.component('v-link', {\n" +
+            "        template: '<a v-bind:href=\"href\" v-bind:class=\"{ active: isActive }\" v-on:click=\"go\"><slot></slot></a>',\n" +
+            "        props: {href: {type:String,required: true}},\n" +
+            "        computed: {isActive () {return this.href === this.$root.currentRoute}},\n" +
+            "        methods: {go (event) {\n" +
+            "            event.preventDefault();this.$root.currentRoute = this.href;console.log(this.$root.currentRoute);\n" +
+            "            if(this.$root.currentRoute.startsWith('/#'))\n" +
+            "                this.$root.currentRoute = this.$root.currentRoute.substring(2);\n" +
+            "            window.history.pushState(null,routes[this.$root.currentRoute],this.href)\n" +
+            "            }\n" +
+            "        }\n" +
+            "    });";
     private Properties prop = null;
     private StringBuffer buffer = new StringBuffer();
     private Map<String, String> beanMap = new LinkedHashMap<>();
+    private Map<String, String> routeMap = new LinkedHashMap<>();
 
     private static final String CHAR_LOWER = "abcdefghijklmnopqrstuvwxyz";
     private static final String CHAR_UPPER = CHAR_LOWER.toUpperCase();
@@ -39,6 +62,7 @@ public class ActionInstaller {
     public ActionInstaller(DocumentBuilder dBuilder, Properties prop) {
         this.dBuilder = dBuilder;
         this.prop = prop;
+        this.buffer.append(vLinkComponent).append("\n").append(notFoundComponent).append("\n");
     }
 
     public static String generateRandomString() {
@@ -68,7 +92,7 @@ public class ActionInstaller {
         return actionInstaller;
     }
 
-    public ActionInstaller compile(InputStream inputStream) {
+    public ActionInstaller component(InputStream inputStream) {
         String error = null;
         String jsApp = null;
         try {
@@ -141,6 +165,54 @@ public class ActionInstaller {
             throw new RuntimeException(error);
         buffer.append(jsApp).append("\n");
         return this;
+    }
+
+    public ActionInstaller page(InputStream inputStream) {
+        String error = null;
+        try {
+            String theString = IOUtils.toString(inputStream, "UTF-8");
+            String appString = theString.substring(theString.indexOf("<page "), theString.indexOf("</page>") + 8);
+            Document doc = dBuilder.parse(new InputSource(new StringReader(appString)));
+            NodeList nList = doc.getElementsByTagName("page");
+            Node item = nList.item(0);
+            String pageName = null;
+            String pagePath = null;
+            if (item.getNodeType() == Node.ELEMENT_NODE) {
+                Element eElement = (Element) item;
+                pageName = eElement.getAttribute("name");
+                pagePath = eElement.getAttribute("path");
+            }
+
+            String templateString = theString.substring(theString.indexOf("<template>") + 10, theString.indexOf("</template>"));
+
+            String pageComponent = "var $app$ = Vue.component('$app$', { template: '$template$' });";
+            pageComponent = pageComponent.replaceAll("\\$app\\$", pageName);
+            pageComponent = pageComponent.replaceAll("\\$template\\$",
+                    Arrays.stream(templateString.split(System.getProperty("line.separator")))
+                            .map(line -> line.trim()).collect(Collectors.joining("")));
+            buffer.append(pageComponent).append("\n");
+            routeMap.put(pagePath, pageName);
+        } catch (IOException e) {
+            error = e.getMessage();
+        } catch (SAXException e) {
+            error = e.getMessage();
+        }
+        if(error != null)
+            throw new RuntimeException(error);
+        return this;
+    }
+
+    public void install() {
+        StringBuffer routerBuffer = new StringBuffer();
+        routerBuffer.append("const routes = {");
+        for (String key : routeMap.keySet()) {
+            routerBuffer.append("'/" + key + "':").append(routeMap.get(key)).append(",");
+        }
+        if(routeMap.size() > 0)
+            routerBuffer.deleteCharAt(routerBuffer.length() - 1);
+        routerBuffer.append("};");
+        buffer.append(routerBuffer).append("\n");
+        buffer.append(appComponent).append("\n");
     }
 
     public String getAppBuffer() {

@@ -13,9 +13,12 @@ public class SpringVueApplication {
 
 	public static void main(String[] args) throws ParserConfigurationException {
 		ActionInstaller.getInstance()
-				.compile(SpringVueApplication.class.getResourceAsStream("/piana/forms/one.vue.jsp"))
-				.compile(SpringVueApplication.class.getResourceAsStream("/piana/forms/two.vue.jsp"))
-				.compile(SpringVueApplication.class.getResourceAsStream("/piana/forms/three.vue.jsp"));
+				.component(SpringVueApplication.class.getResourceAsStream("/piana/component/one.vue.jsp"))
+				.component(SpringVueApplication.class.getResourceAsStream("/piana/component/two.vue.jsp"))
+				.component(SpringVueApplication.class.getResourceAsStream("/piana/component/three.vue.jsp"))
+				.page(SpringVueApplication.class.getResourceAsStream("/piana/page/root.vue.html"))
+				.page(SpringVueApplication.class.getResourceAsStream("/piana/page/login.vue.html"))
+				.install();
 
 		SpringApplication.run(SpringVueApplication.class, args);
 	}
