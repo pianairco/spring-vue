@@ -1,6 +1,5 @@
 package ir.piana.dev.springvue.core.action;
 
-import ir.piana.dev.springvue.core.sql.SQLExecuter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.RequestEntity;
@@ -18,9 +17,16 @@ public class ActionRest {
     @Autowired
     private ApplicationContext сontext;
 
+    @Autowired
+    private SpringVueResource springVueResource;
+
     @GetMapping(value = "/vu-app", produces = "text/javascript; charset=UTF-8")
     public ResponseEntity getVueApp() throws ParserConfigurationException {
-        return ResponseEntity.status(200).body(ActionInstaller.getInstance().getAppBuffer());
+        boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().
+                getInputArguments().toString().indexOf("jdwp") >= 0;
+        if(isDebug)
+            springVueResource.refresh();
+        return ResponseEntity.status(200).body(springVueResource.getVueApp());
     }
 
     @PostMapping(path = "action")
@@ -43,11 +49,7 @@ public class ActionRest {
         return notFound.apply(requestEntity);
     }
 
-    @Autowired
-    private SQLExecuter sqlExecuter;
-
     Function<RequestEntity, ResponseEntity> notFound = (r) -> {
-        sqlExecuter.toString();
         return ResponseEntity.status(404).body("Not Found");
     };
 }

@@ -27,23 +27,20 @@
 
 <bean>
     <import>
-        <%@ page import="org.springframework.beans.factory.annotation.Autowired" %>
-        <%@ page import="ir.piana.dev.springvue.core.sql.SQLExecuter" %>
         <%@ page import="org.springframework.http.RequestEntity" %>
         <%@ page import="org.springframework.http.ResponseEntity" %>
         <%@ page import="java.util.function.Function" %>
-        <%@ page import="java.util.List" %>
         <%@ page import="java.util.Map" %>
         <%@ page import="ir.piana.dev.springvue.core.action.Action" %>
     </import>
     <action>
         <%
             class $VUE$ extends Action {
-                @Autowired
-                SQLExecuter sqlExecuter;
+//                @Autowired
+//                SQLExecuter sqlExecuter;
 
                 public Function<RequestEntity, ResponseEntity> x = (r) -> {
-                    List<Object> objects = sqlExecuter.executeQuery("select * from users");
+//                    List<Object> objects = sqlExecuter.executeQuery("select * from users");
                     Map body = (Map) r.getBody();
                     return ResponseEntity.ok("Good By Friend!");
                 };

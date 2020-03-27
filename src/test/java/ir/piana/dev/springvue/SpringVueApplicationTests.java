@@ -1,13 +1,15 @@
 package ir.piana.dev.springvue;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootTest
-class SpringVueApplicationTests {
+//@SpringBootTest()
+//@SpringBootConfiguration
+@SpringBootApplication(scanBasePackages = "ir.piana.dev.springvue.core")
+public class SpringVueApplicationTests {
 
-	@Test
-	void contextLoads() {
+	public static void main(String[] args) {
+		SpringApplication.run(SpringVueApplicationTests.class, args);
 	}
 
 }
