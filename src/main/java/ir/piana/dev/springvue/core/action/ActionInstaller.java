@@ -324,57 +324,20 @@ public class ActionInstaller {
         return this;
     }
 
-//
-//    public ActionInstaller page(InputStream inputStream) {
-//        String error = null;
-//        try {
-//            String theString = IOUtils.toString(inputStream, "UTF-8");
-//            String appString = theString.substring(theString.indexOf("<page "), theString.indexOf("</page>") + 8);
-//            Document doc = dBuilder.parse(new InputSource(new StringReader(appString)));
-//            NodeList nList = doc.getElementsByTagName("page");
-//            Node item = nList.item(0);
-//            String pageName = null;
-//            String pagePath = null;
-//            if (item.getNodeType() == Node.ELEMENT_NODE) {
-//                Element eElement = (Element) item;
-//                pageName = eElement.getAttribute("name");
-//                pagePath = eElement.getAttribute("path");
-//            }
-//
-//            String templateString = theString.substring(theString.indexOf("<template>") + 10, theString.indexOf("</template>"));
-//            if(theString.contains("<script>")) {
-//                String scriptString = theString.substring(theString.indexOf("<script>") + 8, theString.indexOf("</script>"));
-//                StringBuffer jsAppBuffer = new StringBuffer();
-//                String jsApp = jsAppBuffer.append(scriptString).toString().replaceAll("\\$app\\$", pageName)
-//                        .replace("$template$",
-//                                Arrays.stream(templateString.split(System.getProperty("line.separator")))
-//                                        .map(line -> line.trim()).collect(Collectors.joining("")));
-//                buffer.append(jsApp).append("\n");
-//            } else {
-//                String pageComponent = "var $app$ = Vue.component('$app$', { template: '$template$' });";
-//                pageComponent = pageComponent.replaceAll("\\$app\\$", pageName);
-//                pageComponent = pageComponent.replaceAll("\\$template\\$",
-//                        Arrays.stream(templateString.split(System.getProperty("line.separator")))
-//                                .map(line -> line.trim()).collect(Collectors.joining("")));
-//                buffer.append(pageComponent).append("\n");
-//            }
-//            routeMap.put(pagePath, pageName);
-//        } catch (IOException e) {
-//            error = e.getMessage();
-//        } catch (SAXException e) {
-//            error = e.getMessage();
-//        }
-//        if(error != null)
-//            throw new RuntimeException(error);
-//        return this;
-//    }
-
     public Map<String, String> route(Map<String, Object> map, String parentPath) {
         Map<String, String> routeMap = new LinkedHashMap<>();
         parentPath = parentPath.equals("//") ? "" : parentPath;
         for (String key : map.keySet()) {
             if (map.get(key) instanceof String) {
-                routeMap.put(parentPath.concat(key), (String) map.get(key));
+                String sign = "";
+                String val = (String) map.get(key);
+                if(val.startsWith("$")) {
+                    if(val.substring(1, val.indexOf("(")).equalsIgnoreCase("redirect-to")) {
+                        val = val.substring(val.indexOf("(") + 1, val.indexOf(")"));
+                        sign = "@";
+                    }
+                }
+                routeMap.put(sign.concat(parentPath).concat(key), val);
             } else {
                 routeMap.putAll(route((Map<String, Object>)map.get(key), parentPath.concat(key)));
             }
@@ -406,16 +369,20 @@ public class ActionInstaller {
         }
         StringBuffer routerBuffer = new StringBuffer();
 //        route(this.getClass().getResourceAsStream(routePath));
-        routerBuffer.append("const routes = {");
+        routerBuffer.append("const routes = [");
         for (String key : routeMap.keySet()) {
-            routerBuffer.append("'" + key + "':").append(routeMap.get(key)).append(",");
+            if(key.startsWith("@"))
+                routerBuffer.append("{path:'" + key.substring(1) + "', redirect:'").append(routeMap.get(key)).append("'},");
+            else
+                routerBuffer.append("{path:'" + key + "', component:").append(routeMap.get(key)).append("},");
         }
         if(routeMap.size() > 0)
             routerBuffer.deleteCharAt(routerBuffer.length() - 1);
-        routerBuffer.append("};");
+        routerBuffer.append("];");
         buffer.append(routerBuffer).append("\n");
+        buffer.append("const router = new VueRouter({routes})");
         buffer.append(notFoundComponent).append("\n");
-        buffer.append(vLinkComponent).append("\n");
+//        buffer.append(vLinkComponent).append("\n");
         buffer.append(appComponent).append("\n");
         return new DefaultSpringVueResource(buffer.toString(), beanMap);
     }
@@ -434,16 +401,20 @@ public class ActionInstaller {
         }
         StringBuffer routerBuffer = new StringBuffer();
 //        route(this.getClass().getResourceAsStream(routePath));
-        routerBuffer.append("const routes = {");
+        routerBuffer.append("const routes = [");
         for (String key : routeMap.keySet()) {
-            routerBuffer.append("'" + key + "':").append(routeMap.get(key)).append(",");
+            if(key.startsWith("@"))
+                routerBuffer.append("{path:'" + key.substring(1) + "', redirect:'").append(routeMap.get(key)).append("'},");
+            else
+                routerBuffer.append("{path:'" + key + "', component:").append(routeMap.get(key)).append("},");
         }
         if(routeMap.size() > 0)
             routerBuffer.deleteCharAt(routerBuffer.length() - 1);
-        routerBuffer.append("};");
+        routerBuffer.append("];");
         buffer.append(routerBuffer).append("\n");
+        buffer.append("const router = new VueRouter({routes})");
         buffer.append(notFoundComponent).append("\n");
-        buffer.append(vLinkComponent).append("\n");
+//        buffer.append(vLinkComponent).append("\n");
         buffer.append(appComponent).append("\n");
         return new DefaultSpringVueResource(buffer.toString(), beanMap);
     }
