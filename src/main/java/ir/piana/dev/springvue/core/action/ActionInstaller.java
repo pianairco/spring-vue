@@ -32,7 +32,7 @@ public class ActionInstaller {
 
     private List<String> components = new ArrayList<>();
     private String routePath;
-    private Map<String, String> routeMap = new LinkedHashMap<>();
+    private Map<String, Map.Entry<String, Object>> routeMap = new LinkedHashMap<>();
     private String beanBaseName;
     private String beanPackage;
     private String loadFrom;
@@ -324,8 +324,8 @@ public class ActionInstaller {
         return this;
     }
 
-    public Map<String, String> route(Map<String, Object> map, String parentPath) {
-        Map<String, String> routeMap = new LinkedHashMap<>();
+    public Map<String, Map.Entry<String, Map<String, String>>> route(Map<String, Object> map, String parentPath) {
+        Map<String, Map.Entry<String, Map<String, String>>> routeMap = new LinkedHashMap<>();
         parentPath = parentPath.equals("//") ? "" : parentPath;
         for (String key : map.keySet()) {
             if (map.get(key) instanceof String) {
@@ -337,9 +337,14 @@ public class ActionInstaller {
                         sign = "@";
                     }
                 }
-                routeMap.put(sign.concat(parentPath).concat(key), val);
+                routeMap.put(sign.concat(parentPath).concat(key), new AbstractMap.SimpleEntry(val, null));
             } else {
-                routeMap.putAll(route((Map<String, Object>)map.get(key), parentPath.concat(key)));
+                Map<String, Object> childMap = (Map<String, Object>) map.get(key);
+                if(childMap.containsKey("component")) {
+                    String component = (String) childMap.get("component");
+                    routeMap.put(parentPath.concat(key), new AbstractMap.SimpleEntry(component, route((Map<String, Object>)childMap.get("children"), "")));
+                } else
+                    routeMap.putAll(route((Map<String, Object>)map.get(key), parentPath.concat(key)));
             }
         }
         return routeMap;
@@ -363,6 +368,26 @@ public class ActionInstaller {
         return this;
     }
 
+    StringBuffer installRouter(Map<String, Map.Entry<String, Object>> map, String key) {
+        StringBuffer routerBuffer = new StringBuffer();
+        if(key.startsWith("@"))
+            routerBuffer.append("{path:'" + key.substring(1) + "', redirect:'").append(map.get(key).getKey()).append("'},");
+        else {
+            if(map.get(key).getValue() == null)
+                routerBuffer.append("{path:'" + key + "', component:").append(map.get(key).getKey()).append("},");
+            else {
+                routerBuffer.append("{path:'" + key + "', component:").append(map.get(key).getKey()).append(",")
+                        .append("children:[");
+                for (String k : ((Map<String, Map.Entry<String, Object>>)map.get(key).getValue()).keySet()) {
+                    routerBuffer.append(installRouter((Map<String, Map.Entry<String, Object>>)map.get(key).getValue(), k));
+                }
+                routerBuffer.deleteCharAt(routerBuffer.length() - 1);
+                routerBuffer.append("]},");
+            }
+        }
+        return routerBuffer;
+    }
+
     public SpringVueResource install() {
         for(String resourcePath : components) {
             component(this.getClass().getResourceAsStream(resourcePath));
@@ -371,10 +396,7 @@ public class ActionInstaller {
 //        route(this.getClass().getResourceAsStream(routePath));
         routerBuffer.append("const routes = [");
         for (String key : routeMap.keySet()) {
-            if(key.startsWith("@"))
-                routerBuffer.append("{path:'" + key.substring(1) + "', redirect:'").append(routeMap.get(key)).append("'},");
-            else
-                routerBuffer.append("{path:'" + key + "', component:").append(routeMap.get(key)).append("},");
+            routerBuffer.append(installRouter(routeMap, key));
         }
         if(routeMap.size() > 0)
             routerBuffer.deleteCharAt(routerBuffer.length() - 1);
@@ -403,10 +425,11 @@ public class ActionInstaller {
 //        route(this.getClass().getResourceAsStream(routePath));
         routerBuffer.append("const routes = [");
         for (String key : routeMap.keySet()) {
-            if(key.startsWith("@"))
-                routerBuffer.append("{path:'" + key.substring(1) + "', redirect:'").append(routeMap.get(key)).append("'},");
-            else
-                routerBuffer.append("{path:'" + key + "', component:").append(routeMap.get(key)).append("},");
+            routerBuffer.append(installRouter(routeMap, key));
+//            if(key.startsWith("@"))
+//                routerBuffer.append("{path:'" + key.substring(1) + "', redirect:'").append(routeMap.get(key)).append("'},");
+//            else
+//                routerBuffer.append("{path:'" + key + "', component:").append(routeMap.get(key)).append("},");
         }
         if(routeMap.size() > 0)
             routerBuffer.deleteCharAt(routerBuffer.length() - 1);
