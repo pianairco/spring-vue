@@ -10,19 +10,19 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav mr-auto">
                 <li class="nav-item">
-                    <v-link class="nav-link" href="/login">login</v-link>
+                    <router-link class="nav-link" to="/login">login</router-link>
                 </li>
                 <li class="nav-item">
-                    <v-link class="nav-link" href="/">Home</v-link>
+                    <router-link class="nav-link" to="/home">Home</router-link>
                 </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         Products
                     </a>
                     <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                        <v-link class="dropdown-item" href="/proucts/book">Book</v-link>
+                        <router-link class="dropdown-item" to="/proucts/book">Book</router-link>
                         <div class="dropdown-divider"></div>
-                        <v-link class="dropdown-item" href="/proucts/box">Box</v-link>
+                        <router-link class="dropdown-item" to="/proucts/box">Box</router-link>
                     </div>
                 </li>
             </ul>
