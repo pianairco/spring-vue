@@ -1,5 +1,9 @@
 route:
-  /: root
+  /: $redirect-to(/home)
+  /home:
+    component: root
+    children:
+      /book: book
   /login: login
   /proucts:
     /book: book
