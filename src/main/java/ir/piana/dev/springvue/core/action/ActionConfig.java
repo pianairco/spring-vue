@@ -1,17 +1,44 @@
 package ir.piana.dev.springvue.core.action;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import ir.piana.dev.springvue.core.group.GroupFromYamlService;
+import ir.piana.dev.springvue.core.group.GroupProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
 
-@Configuration
+//@Configuration
 public class ActionConfig {
+    @Bean(name="objectMapper")
+    public ObjectMapper getObjectMapper() {
+        return new ObjectMapper();
+    }
+
+    @Bean(name="yamlObjectMapper")
+    @DependsOn("objectMapper")
+    public ObjectMapper yamlObjectMapper() {
+        return new ObjectMapper(new YAMLFactory());
+    }
+
+    @Bean
+    @DependsOn("yamlObjectMapper")
+    @Scope("singleton")
+    public GroupProvider getGroupProviderFromYaml(
+            @Qualifier("objectMapper") ObjectMapper objectMapper,
+            @Qualifier("yamlObjectMapper") ObjectMapper yamlObjectMapper) {
+        GroupFromYamlService groupProvider = new GroupFromYamlService(objectMapper, yamlObjectMapper);
+        groupProvider.init();
+        return groupProvider;
+    }
+
     @Bean("springVueResource")
     @Scope("singleton")
-    public SpringVueResource getSpringVueResource() {
-        SpringVueResource springVueResource = ActionInstaller.getSpringVueResource();
+    @DependsOn("yamlObjectMapper")
+    public SpringVueResource getSpringVueResource(GroupProvider groupProvider) {
+        SpringVueResource springVueResource = ActionInstaller.getSpringVueResource(groupProvider);
         return springVueResource;
     }
 

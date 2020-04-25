@@ -1,8 +1,9 @@
 package ir.piana.dev.springvue.core.action;
 
-import ch.qos.logback.core.db.DBAppenderBase;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import ir.piana.dev.springvue.core.group.GroupProvider;
 import ir.piana.dev.springvue.core.reflection.ClassGenerator;
 import org.apache.commons.io.IOUtils;
 import org.w3c.dom.Document;
@@ -21,7 +22,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.net.URL;
-import java.net.URLConnection;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 public class ActionInstaller {
     private static DocumentBuilder dBuilder;
     private static ActionInstaller actionInstaller = null;
-
+    private GroupProvider groupProvider;
     private List<String> components = new ArrayList<>();
     private String routePath;
     private Map<String, Map.Entry<String, Object>> routeMap = new LinkedHashMap<>();
@@ -122,7 +122,7 @@ public class ActionInstaller {
 //        return actionInstaller;
 //    }
 
-    public static synchronized SpringVueResource getSpringVueResource() {
+    public static synchronized SpringVueResource getSpringVueResource(GroupProvider groupProvider) {
         InputStream inputStream = ActionListener.class.getResourceAsStream("/piana/spring-vue.yaml");
         if (inputStream == null)
             throw new RuntimeException("config file required!");
@@ -131,6 +131,7 @@ public class ActionInstaller {
             Map<String, Object> map = mapper.readValue(inputStream, Map.class);
             map = (Map<String, Object>) map.get("app");
             ActionInstaller actionInstaller = new ActionInstaller();
+            actionInstaller.setGroupProvider(groupProvider);
             actionInstaller.setSpringProperties((Map<String, Object>) map.get("spring"));
             actionInstaller.setVueProperties((Map<String, Object>) map.get("vue"));
             actionInstaller.loadComponents();
@@ -141,7 +142,7 @@ public class ActionInstaller {
         }
     }
 
-    static synchronized SpringVueResource refreshSpringVueResource(SpringVueResource springVueResource) {
+    static synchronized SpringVueResource refreshSpringVueResource(SpringVueResource springVueResource, GroupProvider groupProvider) {
         InputStream inputStream = ActionListener.class.getResourceAsStream("/piana/spring-vue.yaml");
         if (inputStream == null)
             throw new RuntimeException("config file required!");
@@ -150,11 +151,12 @@ public class ActionInstaller {
             Map<String, Object> map = mapper.readValue(inputStream, Map.class);
             map = (Map<String, Object>) map.get("app");
             ActionInstaller actionInstaller = new ActionInstaller();
+            actionInstaller.setGroupProvider(groupProvider);
             actionInstaller.setSpringProperties((Map<String, Object>) map.get("spring"));
             actionInstaller.setVueProperties((Map<String, Object>) map.get("vue"));
             actionInstaller.loadComponents();
             actionInstaller.loadRoutes();
-            return actionInstaller.refresh(springVueResource);
+            return actionInstaller.refresh(springVueResource, groupProvider);
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage());
         }
@@ -164,6 +166,10 @@ public class ActionInstaller {
         if(actionInstaller == null)
             throw new RuntimeException("actionInstaller not initialized!");
         return actionInstaller;
+    }
+
+    private void setGroupProvider(GroupProvider groupProvider) {
+        this.groupProvider = groupProvider;
     }
 
     private void setSpringProperties(Map<String, Object> springMap) {
@@ -221,7 +227,7 @@ public class ActionInstaller {
                 appName = eElement.getAttribute("name");
             }
 
-            String templateString = theString.substring(theString.indexOf("<template>") + 10, theString.indexOf("</template>"));
+            String templateString = theString.substring(theString.indexOf("<html-template>") + 15, theString.indexOf("</html-template>"));
             String scriptString = theString.substring(theString.indexOf("<script>") + 8, theString.indexOf("</script>"));
 
             String beanName = beanBaseName.concat(generateRandomString()).concat(String.valueOf(counter++));
@@ -296,7 +302,7 @@ public class ActionInstaller {
                 appName = eElement.getAttribute("name");
             }
 
-            String templateString = theString.substring(theString.indexOf("<template>") + 10, theString.indexOf("</template>"));
+            String templateString = theString.substring(theString.indexOf("<html-template>") + 15, theString.indexOf("</html-template>"));
             String scriptString = theString.substring(theString.indexOf("<script>") + 8, theString.indexOf("</script>"));
 
             final String appName2 = appName;
@@ -388,7 +394,7 @@ public class ActionInstaller {
         return routerBuffer;
     }
 
-    public SpringVueResource install() {
+    public SpringVueResource install() throws RuntimeException {
         for(String resourcePath : components) {
             component(this.getClass().getResourceAsStream(resourcePath));
         }
@@ -402,14 +408,16 @@ public class ActionInstaller {
             routerBuffer.deleteCharAt(routerBuffer.length() - 1);
         routerBuffer.append("];");
         buffer.append(routerBuffer).append("\n");
-        buffer.append("const router = new VueRouter({routes})");
+        buffer.append("const router = new VueRouter({routes});");
+        buffer.append(notFoundComponent).append("\n");
+        buffer.append("const groups = ").append(groupProvider.getGroupsJsonString()).append(";");
         buffer.append(notFoundComponent).append("\n");
 //        buffer.append(vLinkComponent).append("\n");
         buffer.append(appComponent).append("\n");
-        return new DefaultSpringVueResource(buffer.toString(), beanMap);
+        return new DefaultSpringVueResource(buffer.toString(), beanMap, groupProvider);
     }
 
-    public SpringVueResource refresh(SpringVueResource springVueResource) {
+    public SpringVueResource refresh(SpringVueResource springVueResource, GroupProvider groupProvider) {
         for(String resourcePath : components) {
 //            try {
 //                URL resURL = this.getClass().getResource(resourcePath);
@@ -435,20 +443,27 @@ public class ActionInstaller {
             routerBuffer.deleteCharAt(routerBuffer.length() - 1);
         routerBuffer.append("];");
         buffer.append(routerBuffer).append("\n");
-        buffer.append("const router = new VueRouter({routes})");
+        buffer.append("const router = new VueRouter({routes});");
+
+        buffer.append("Vue.mixin({data: function() { return {get groups() {return ")
+                .append(groupProvider.getGroupsJsonString()).append("; }}}});").append("\n");
+
+//        buffer.append("const groups = ").append(groupProvider.getGroupsJsonString()).append(";");
         buffer.append(notFoundComponent).append("\n");
 //        buffer.append(vLinkComponent).append("\n");
         buffer.append(appComponent).append("\n");
-        return new DefaultSpringVueResource(buffer.toString(), beanMap);
+        return new DefaultSpringVueResource(buffer.toString(), beanMap, groupProvider);
     }
 
     private static class DefaultSpringVueResource implements SpringVueResource {
         private String vueApp;
         private Map<String, Map.Entry<String, String>> beanMap;
+        private GroupProvider groupProvider;
 
-        public DefaultSpringVueResource(String vueApp, Map<String, Map.Entry<String, String>> beanMap) {
+        public DefaultSpringVueResource(String vueApp, Map<String, Map.Entry<String, String>> beanMap, GroupProvider groupProvider) {
             this.vueApp = vueApp;
             this.beanMap = beanMap;
+            this.groupProvider = groupProvider;
         }
 
         @Override
@@ -463,7 +478,7 @@ public class ActionInstaller {
 
         @Override
         public void refresh() {
-            SpringVueResource springVueResource = ActionInstaller.refreshSpringVueResource(this);
+            SpringVueResource springVueResource = ActionInstaller.refreshSpringVueResource(this, groupProvider);
             this.vueApp = springVueResource.getVueApp();
         }
     }

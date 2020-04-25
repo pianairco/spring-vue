@@ -3,3 +3,6 @@ action: one
 activity: x
 
 ###
+GET http://provider.weemarket.ir/api.php
+
+###

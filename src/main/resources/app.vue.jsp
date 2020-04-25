@@ -1,5 +1,5 @@
 <script>
     const app = new Vue({
         router
-    }).$mount('#app')
+    }).$mount('#app');
 </script>

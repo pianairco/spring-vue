@@ -12,7 +12,7 @@
         methods: {go (event) {
                 event.preventDefault();
                 this.$root.currentRoute = this.href;
-                window.history.pushState(null,routes[this.$root.currentRoute],"/#"+this.href);
+                awindow.history.pushState(null,routes[this.$root.currentRoute],"/#"+this.href);
             }
         }
     });
