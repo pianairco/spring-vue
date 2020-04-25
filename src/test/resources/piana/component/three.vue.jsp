@@ -37,7 +37,7 @@
         <%
             class $VUE$ extends Action {
 //                @Autowired
-//                SQLExecuter sqlExecuter;
+//                SQLExecutor sqlExecuter;
 
                 public Function<RequestEntity, ResponseEntity> x = (r) -> {
 //                    List<Object> objects = sqlExecuter.executeQuery("select * from users");

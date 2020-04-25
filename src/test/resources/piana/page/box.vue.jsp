@@ -28,7 +28,7 @@
 <bean>
     <import>
         <%@ page import="org.springframework.beans.factory.annotation.Autowired" %>
-        <%@ page import="ir.piana.dev.springvue.core.sql.SQLExecuter" %>
+        <%@ page import="ir.piana.dev.springvue.core.sql.SQLExecutor" %>
         <%@ page import="org.springframework.http.RequestEntity" %>
         <%@ page import="org.springframework.http.ResponseEntity" %>
         <%@ page import="java.util.function.Function" %>
@@ -40,7 +40,7 @@
         <%
             class $VUE$ extends Action {
                 @Autowired
-                SQLExecuter sqlExecuter;
+                SQLExecutor sqlExecuter;
 
                 public Function<RequestEntity, ResponseEntity> x = (r) -> {
                     List<Object> objects = sqlExecuter.executeQuery("select * from users");
