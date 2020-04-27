@@ -65,6 +65,7 @@ public class GroupFromYamlService extends Action implements GroupProvider {
 
     private GroupModel parseGroup (Map<String, Object> kMap, String parentCode) {
         GroupModel item = new GroupModel();
+        item.setParentCode(parentCode);
         String info = (String)kMap.get("info");
         Matcher tMatcher = tPattern.matcher(info);
         if (tMatcher.find()) {

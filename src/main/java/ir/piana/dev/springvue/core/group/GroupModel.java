@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GroupModel {
+    private String parentCode;
     private String title;
     private String icon;
     private String role;
@@ -60,5 +61,13 @@ public class GroupModel {
 
     public void setGroups(List<GroupModel> groups) {
         this.groups = groups;
+    }
+
+    public String getParentCode() {
+        return parentCode;
+    }
+
+    public void setParentCode(String parentCode) {
+        this.parentCode = parentCode;
     }
 }

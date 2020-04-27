@@ -446,7 +446,7 @@ public class ActionInstaller {
         buffer.append("const router = new VueRouter({routes});");
 
         buffer.append("Vue.mixin({data: function() { return {get groups() {return ")
-                .append(groupProvider.getGroupsJsonString()).append("; }}}});").append("\n");
+                .append(groupProvider.getGroupsJsonString()).append("; }, get activeParent() { return {\"code\": \"\" }; }}}});").append("\n");
 
 //        buffer.append("const groups = ").append(groupProvider.getGroupsJsonString()).append(";");
         buffer.append(notFoundComponent).append("\n");
