@@ -5,13 +5,21 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import ir.piana.dev.springvue.core.group.GroupFromYamlService;
 import ir.piana.dev.springvue.core.group.GroupProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
+import org.springframework.core.env.Environment;
 
 //@Configuration
 public class ActionConfig {
+//    @Value("${app.mode.debug}")
+//    private boolean debug;
+//
+//    @Value("#{systemProperties.debug != null}")
+//    Boolean isDebug = false;
+
     @Bean(name="objectMapper")
     public ObjectMapper getObjectMapper() {
         return new ObjectMapper();
@@ -28,8 +36,10 @@ public class ActionConfig {
     @Scope("singleton")
     public GroupProvider getGroupProviderFromYaml(
             @Qualifier("objectMapper") ObjectMapper objectMapper,
-            @Qualifier("yamlObjectMapper") ObjectMapper yamlObjectMapper) {
-        GroupFromYamlService groupProvider = new GroupFromYamlService(objectMapper, yamlObjectMapper);
+            @Qualifier("yamlObjectMapper") ObjectMapper yamlObjectMapper,
+            Environment env) {
+        String property = env.getProperty("intellij.debug.agent");
+        GroupFromYamlService groupProvider = new GroupFromYamlService(objectMapper, yamlObjectMapper, property != null && property.equalsIgnoreCase("true") ? true : false);
         groupProvider.init();
         return groupProvider;
     }

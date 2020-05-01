@@ -5,6 +5,7 @@ import java.util.List;
 
 public class GroupModel {
     private String parentCode;
+    private String link;
     private String title;
     private String icon;
     private String role;
@@ -69,5 +70,13 @@ public class GroupModel {
 
     public void setParentCode(String parentCode) {
         this.parentCode = parentCode;
+    }
+
+    public String getLink() {
+        return link;
+    }
+
+    public void setLink(String link) {
+        this.link = link;
     }
 }

@@ -1,11 +1,11 @@
 package ir.piana.dev.springvue.core.action;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import ir.piana.dev.springvue.core.group.GroupProvider;
 import ir.piana.dev.springvue.core.reflection.ClassGenerator;
 import org.apache.commons.io.IOUtils;
+import org.reflections.Reflections;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -35,7 +35,7 @@ public class ActionInstaller {
     private Map<String, Map.Entry<String, Object>> routeMap = new LinkedHashMap<>();
     private String beanBaseName;
     private String beanPackage;
-    private String loadFrom;
+    private List<String> loadFrom;
     StringBuffer buffer = new StringBuffer();
     Map<String, Map.Entry<String, String>> beanMap = new LinkedHashMap<>();
 
@@ -102,9 +102,13 @@ public class ActionInstaller {
     private List<File> getResourceFiles(String folderName) {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         URL url = this.getClass().getResource(folderName);
-        String path = url.getPath();
-        File[] files = new File(path).listFiles();
-        return Arrays.asList(files);
+        if(url != null) {
+            String path = url.getPath();
+            File[] files = new File(path).listFiles();
+            return Arrays.asList(files);
+        } else {
+            return new ArrayList<>();
+        }
     }
 //    public static synchronized ActionInstaller getInstance(InputStream input) {
 //        if (actionInstaller != null)
@@ -123,7 +127,7 @@ public class ActionInstaller {
 //    }
 
     public static synchronized SpringVueResource getSpringVueResource(GroupProvider groupProvider) {
-        InputStream inputStream = ActionListener.class.getResourceAsStream("/piana/spring-vue.yaml");
+        InputStream inputStream = ActionListener.class.getResourceAsStream("/piana/cfg/spring-vue.yaml");
         if (inputStream == null)
             throw new RuntimeException("config file required!");
         String error = null;
@@ -143,7 +147,7 @@ public class ActionInstaller {
     }
 
     static synchronized SpringVueResource refreshSpringVueResource(SpringVueResource springVueResource, GroupProvider groupProvider) {
-        InputStream inputStream = ActionListener.class.getResourceAsStream("/piana/spring-vue.yaml");
+        InputStream inputStream = ActionListener.class.getResourceAsStream("/piana/cfg/spring-vue.yaml");
         if (inputStream == null)
             throw new RuntimeException("config file required!");
         String error = null;
@@ -178,12 +182,13 @@ public class ActionInstaller {
     }
 
     private void setVueProperties(Map<String, Object> vueMap) {
-        loadFrom = (String) vueMap.get("load-from");
+        loadFrom = Arrays.asList(((String) vueMap.get("load-from")).split(","))
+                .stream().map(s -> s.trim()).collect(Collectors.toList());
 //        routeMap.putAll(route((Map)vueMap.get("route"), ""));
     }
 
     private void loadComponents() {
-        if (loadFrom.equals("resource")) {
+        if (loadFrom.contains("resource")) {
             loadComponentsFromResource();
         }
     }
@@ -198,13 +203,13 @@ public class ActionInstaller {
     }
 
     private void loadRoutes() {
-        if (loadFrom.equals("resource")) {
+        if (loadFrom.contains("resource")) {
             loadRoutesFromResource();
         }
     }
 
     private void loadRoutesFromResource() {
-        route(this.getClass().getResourceAsStream("/piana/route.yaml"));
+        route(this.getClass().getResourceAsStream("/piana/cfg/route.yaml"));
     }
 
     public ActionInstaller component(String resourcePath) {
@@ -212,11 +217,25 @@ public class ActionInstaller {
         return this;
     }
 
-    private ActionInstaller component(InputStream inputStream) {
+    private ActionInstaller installComponent(InputStream inputStream) {
+        String error = null;
+//        String jsApp = null;
+        try {
+            String theString = IOUtils.toString(inputStream, "UTF-8");
+            this.installComponent(theString);
+        } catch (IOException e) {
+            error = e.getMessage();
+        }
+        if(error != null)
+            throw new RuntimeException(error);
+//        buffer.append(jsApp).append("\n");
+        return this;
+    }
+
+    private ActionInstaller installComponent(String theString) {
         String error = null;
         String jsApp = null;
         try {
-            String theString = IOUtils.toString(inputStream, "UTF-8");
             String appString = theString.substring(theString.indexOf("<app "), theString.indexOf("</app>") + 6);
             Document doc = dBuilder.parse(new InputSource(new StringReader(appString)));
             NodeList nList = doc.getElementsByTagName("app");
@@ -289,9 +308,23 @@ public class ActionInstaller {
 
     private ActionInstaller refreshComponent(InputStream inputStream, SpringVueResource springVueResource) {
         String error = null;
-        String jsApp = null;
+//        String jsApp = null;
         try {
             String theString = IOUtils.toString(inputStream, "UTF-8");
+            refreshComponent(theString, springVueResource);
+        } catch (IOException e) {
+            error = e.getMessage();
+        }
+        if(error != null)
+            throw new RuntimeException(error);
+//        buffer.append(jsApp).append("\n");
+        return this;
+    }
+
+    private ActionInstaller refreshComponent(String theString, SpringVueResource springVueResource) {
+        String error = null;
+        String jsApp = null;
+        try {
             String appString = theString.substring(theString.indexOf("<app "), theString.indexOf("</app>") + 6);
             Document doc = dBuilder.parse(new InputSource(new StringReader(appString)));
             NodeList nList = doc.getElementsByTagName("app");
@@ -350,7 +383,7 @@ public class ActionInstaller {
                     String component = (String) childMap.get("component");
                     routeMap.put(parentPath.concat(key), new AbstractMap.SimpleEntry(component, route((Map<String, Object>)childMap.get("children"), "")));
                 } else
-                    routeMap.putAll(route((Map<String, Object>)map.get(key), parentPath.concat(key)));
+                    routeMap.putAll(route((Map<String, Object>)map.get(key), parentPath.concat(key).concat("/")));
             }
         }
         return routeMap;
@@ -396,8 +429,22 @@ public class ActionInstaller {
 
     public SpringVueResource install() throws RuntimeException {
         for(String resourcePath : components) {
-            component(this.getClass().getResourceAsStream(resourcePath));
+            installComponent(this.getClass().getResourceAsStream(resourcePath));
         }
+        if(loadFrom.contains("interface")) {
+            Reflections reflections = new Reflections("ir.piana");
+            Set<Class<? extends VueComponentLoadable>> classes = reflections.getSubTypesOf(VueComponentLoadable.class);
+            for (Class loadable : classes) {
+                try {
+                    installComponent(((VueComponentLoadable)loadable.newInstance()).getComponentString());
+                } catch (InstantiationException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
         StringBuffer routerBuffer = new StringBuffer();
 //        route(this.getClass().getResourceAsStream(routePath));
         routerBuffer.append("const routes = [");
@@ -429,6 +476,20 @@ public class ActionInstaller {
 //                e.printStackTrace();
 //            }
         }
+        if(loadFrom.contains("interface")) {
+            Reflections reflections = new Reflections("ir.piana");
+            Set<Class<? extends VueComponentLoadable>> classes = reflections.getSubTypesOf(VueComponentLoadable.class);
+            for (Class loadable : classes) {
+                try {
+                    refreshComponent(((VueComponentLoadable)loadable.newInstance()).getComponentString(), springVueResource);
+                } catch (InstantiationException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
         StringBuffer routerBuffer = new StringBuffer();
 //        route(this.getClass().getResourceAsStream(routePath));
         routerBuffer.append("const routes = [");

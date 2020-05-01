@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ir.piana.dev.springvue.core.action.Action;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
@@ -25,12 +26,15 @@ import java.util.regex.Pattern;
 public class GroupFromYamlService extends Action implements GroupProvider {
     private ObjectMapper yamlObjectMapper;
     private ObjectMapper objectMapper;
+    private boolean debug;
 
+    private String lPatternString = "l\\(.*\\)";
     private String tPatternString = "t\\(.*\\)";
     private String rPatternString = "r\\(.*\\)";
     private String iPatternString = "i\\(.*\\)";
     private String cPatternString = "c\\(.*\\)";
 
+    Pattern lPattern;
     Pattern tPattern;
     Pattern rPattern;
     Pattern cPattern;
@@ -39,25 +43,35 @@ public class GroupFromYamlService extends Action implements GroupProvider {
     private List<GroupModel> groupCFGList = new ArrayList<>();
     private Map<String, GroupModel> groupCFGMap = new LinkedHashMap<>();
 
-    public GroupFromYamlService(ObjectMapper objectMapper, ObjectMapper yamlObjectMapper) {
+
+    public GroupFromYamlService(ObjectMapper objectMapper, ObjectMapper yamlObjectMapper, boolean debug) {
         this.objectMapper = objectMapper;
         this.yamlObjectMapper = yamlObjectMapper;
+        this.debug = debug;
     }
 
     @PostConstruct
     public void init() {
+        lPattern = Pattern.compile(lPatternString);
         tPattern = Pattern.compile(tPatternString);
         rPattern = Pattern.compile(rPatternString);
-        cPattern = Pattern.compile(cPatternString);
         iPattern = Pattern.compile(iPatternString);
-        InputStream inputStream = ActionListener.class.getResourceAsStream("/cfg/group.yaml");
+        cPattern = Pattern.compile(cPatternString);
+        reloadGroups();
+    }
+
+    public void reloadGroups() {
+        InputStream inputStream = ActionListener.class.getResourceAsStream("/piana/cfg/group.yaml");
         if (inputStream == null)
             throw new RuntimeException("config file required!");
         String error = null;
         try {
+            groupCFGList.clear();
+            groupCFGMap.clear();
             Map<String, Map> map = yamlObjectMapper.readValue(inputStream, Map.class);
             map = (Map<String, Map>) map.get("groups");
-            map.forEach((k, v) -> {groupCFGList.add(parseGroup(v, ""));});
+            if(map != null)
+                map.forEach((k, v) -> {groupCFGList.add(parseGroup(v, ""));});
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage());
         }
@@ -67,6 +81,13 @@ public class GroupFromYamlService extends Action implements GroupProvider {
         GroupModel item = new GroupModel();
         item.setParentCode(parentCode);
         String info = (String)kMap.get("info");
+        Matcher lMatcher = lPattern.matcher(info);
+        if (lMatcher.find()) {
+            item.setLink(lMatcher.group().substring(2, lMatcher.group().length() - 1));
+            info = info.substring(0, info.length() - lMatcher.group().length());
+        } else {
+            item.setLink("");
+        }
         Matcher tMatcher = tPattern.matcher(info);
         if (tMatcher.find()) {
             item.setTitle(tMatcher.group().substring(2, tMatcher.group().length() - 1));
@@ -104,12 +125,16 @@ public class GroupFromYamlService extends Action implements GroupProvider {
     };
 
     public List<GroupModel> getGroups() {
+        if(debug)
+            reloadGroups();
         return groupCFGList;
     }
 
     @Override
     public String getGroupsJsonString() throws RuntimeException {
         try {
+            if(debug)
+                reloadGroups();
             return objectMapper.writeValueAsString(groupCFGList);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
@@ -120,6 +145,8 @@ public class GroupFromYamlService extends Action implements GroupProvider {
     @Override
     public String getGroupsYamlString() throws RuntimeException {
         try {
+            if(debug)
+                reloadGroups();
             return yamlObjectMapper.writeValueAsString(groupCFGList);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
@@ -128,6 +155,8 @@ public class GroupFromYamlService extends Action implements GroupProvider {
     }
 
     public GroupModel getGroupByCode(String code) {
+        if(debug)
+            reloadGroups();
         return groupCFGMap.get(code);
     }
 
