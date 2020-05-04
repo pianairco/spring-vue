@@ -458,7 +458,7 @@ public class ActionInstaller {
         buffer.append("const router = new VueRouter({routes});");
         buffer.append(notFoundComponent).append("\n");
         buffer.append("const groups = ").append(groupProvider.getGroupsJsonString()).append(";");
-        buffer.append(notFoundComponent).append("\n");
+//        buffer.append(notFoundComponent).append("\n");
 //        buffer.append(vLinkComponent).append("\n");
         buffer.append(appComponent).append("\n");
         return new DefaultSpringVueResource(buffer.toString(), beanMap, groupProvider);

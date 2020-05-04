@@ -11,6 +11,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
 import org.springframework.core.env.Environment;
+import org.springframework.web.multipart.MultipartResolver;
+import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 
 //@Configuration
 public class ActionConfig {
@@ -29,6 +31,12 @@ public class ActionConfig {
     @DependsOn("objectMapper")
     public ObjectMapper yamlObjectMapper() {
         return new ObjectMapper(new YAMLFactory());
+    }
+
+    @Bean
+    public MultipartResolver multipartResolver() {
+        CommonsMultipartResolver multipartResolver = new CommonsMultipartResolver();
+        return multipartResolver;
     }
 
     @Bean
