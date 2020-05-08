@@ -39,8 +39,7 @@ public class ActionRest {
         return ResponseEntity.status(200).body(springVueResource.getVueApp());
     }
 
-    @PostMapping(path = "action",
-            consumes = {"application/json;charset=UTF-8",  MediaType.MULTIPART_FORM_DATA_VALUE})
+    @PostMapping(path = "action")
     public ResponseEntity action(RequestEntity requestEntity) {
         List<String> beans = requestEntity.getHeaders().get("action");
         List<String> actions = requestEntity.getHeaders().get("activity");
