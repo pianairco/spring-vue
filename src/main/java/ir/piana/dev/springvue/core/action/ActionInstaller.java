@@ -203,9 +203,9 @@ public class ActionInstaller {
     }
 
     private void loadRoutes() {
-        if (loadFrom.contains("resource")) {
+//        if (loadFrom.contains("resource")) {
             loadRoutesFromResource();
-        }
+//        }
     }
 
     private void loadRoutesFromResource() {
@@ -246,10 +246,12 @@ public class ActionInstaller {
                 appName = eElement.getAttribute("name");
             }
 
-            String templateString = theString.substring(theString.indexOf("<html-template>") + 15, theString.indexOf("</html-template>"));
+            String beanName = beanBaseName.concat(generateRandomString()).concat(String.valueOf(counter++));
+
+            String templateString = theString.substring(theString.indexOf("<html-template>") + 15, theString.indexOf("</html-template>"))
+                    .replaceAll("\\$bean\\$", beanName);
             String scriptString = theString.substring(theString.indexOf("<script>") + 8, theString.indexOf("</script>"));
 
-            String beanName = beanBaseName.concat(generateRandomString()).concat(String.valueOf(counter++));
             StringBuffer jsAppBuffer = new StringBuffer();
             jsApp = jsAppBuffer.append(scriptString).toString().replaceAll("\\$app\\$", appName)
                     .replaceAll("\\$bean\\$", beanName)
@@ -288,7 +290,7 @@ public class ActionInstaller {
                 classSourceBuffer.append(Arrays.stream(classString.split(System.getProperty("line.separator"))).map(line -> line.trim())
                         .filter(line -> !line.isEmpty()).collect(Collectors.joining("\n")));
                 String classSource = classSourceBuffer.toString().replace("class $VUE$", "public class ".concat(aClassName));
-                Class aClass = ClassGenerator.registerClass(aPackage.concat(".").concat(aClassName).replaceAll("\\.", "/"), classSource);
+                Class aClass = ClassGenerator.registerClass(aPackage.concat(".").concat(aClassName).replaceAll("\\.", "/"), classSource.replace("$bean$", beanName));
                 beanMap.put(aPackage.concat(".").concat(aClassName), new AbstractMap.SimpleEntry<>(beanName, appName));
             }
         } catch (IOException e) {
@@ -335,17 +337,23 @@ public class ActionInstaller {
                 appName = eElement.getAttribute("name");
             }
 
-            String templateString = theString.substring(theString.indexOf("<html-template>") + 15, theString.indexOf("</html-template>"));
-            String scriptString = theString.substring(theString.indexOf("<script>") + 8, theString.indexOf("</script>"));
-
             final String appName2 = appName;
             List<Map.Entry<String, String>> collect = springVueResource.getBeanMap().keySet().stream()
                     .filter(key -> springVueResource.getBeanMap().get(key).getValue().equals(appName2))
                     .map(key -> springVueResource.getBeanMap().get(key))
                     .collect(Collectors.toList());
+
             String beanName = "";
             if(collect != null && !collect.isEmpty())
                 beanName = collect.get(0).getKey();
+
+            String templateString = theString.substring(theString.indexOf("<html-template>") + 15, theString.indexOf("</html-template>"))
+                    .replaceAll("\\$bean\\$", beanName);
+            String scriptString = theString.substring(theString.indexOf("<script>") + 8, theString.indexOf("</script>"));
+
+
+
+
             StringBuffer jsAppBuffer = new StringBuffer();
             jsApp = jsAppBuffer.append(scriptString).toString().replaceAll("\\$app\\$", appName)
                     .replaceAll("\\$bean\\$", beanName)
