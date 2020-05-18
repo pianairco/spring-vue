@@ -436,9 +436,6 @@ public class ActionInstaller {
     }
 
     public SpringVueResource install() throws RuntimeException {
-        for(String resourcePath : components) {
-            installComponent(this.getClass().getResourceAsStream(resourcePath));
-        }
         if(loadFrom.contains("interface")) {
             Reflections reflections = new Reflections("ir.piana");
             Set<Class<? extends VueComponentLoadable>> classes = reflections.getSubTypesOf(VueComponentLoadable.class);
@@ -453,6 +450,10 @@ public class ActionInstaller {
             }
         }
 
+        for(String resourcePath : components) {
+            installComponent(this.getClass().getResourceAsStream(resourcePath));
+        }
+
         StringBuffer routerBuffer = new StringBuffer();
 //        route(this.getClass().getResourceAsStream(routePath));
         routerBuffer.append("const routes = [");
@@ -463,7 +464,8 @@ public class ActionInstaller {
             routerBuffer.deleteCharAt(routerBuffer.length() - 1);
         routerBuffer.append("];");
         buffer.append(routerBuffer).append("\n");
-        buffer.append("const router = new VueRouter({routes});");
+//        buffer.append("const router = new VueRouter({mode: 'history', hash: false, routes: routes});");
+        buffer.append("const router = new VueRouter({hash: false, routes: routes});");
         buffer.append(notFoundComponent).append("\n");
         buffer.append("const groups = ").append(groupProvider.getGroupsJsonString()).append(";");
 //        buffer.append(notFoundComponent).append("\n");
@@ -473,17 +475,6 @@ public class ActionInstaller {
     }
 
     public SpringVueResource refresh(SpringVueResource springVueResource, GroupProvider groupProvider) {
-        for(String resourcePath : components) {
-//            try {
-//                URL resURL = this.getClass().getResource(resourcePath);
-//                URLConnection resConn = resURL.openConnection();
-//                resConn.setUseCaches(false);
-//                refreshComponent(resConn.getInputStream(), springVueResource);
-            refreshComponent(this.getClass().getResourceAsStream(resourcePath), springVueResource);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-        }
         if(loadFrom.contains("interface")) {
             Reflections reflections = new Reflections("ir.piana");
             Set<Class<? extends VueComponentLoadable>> classes = reflections.getSubTypesOf(VueComponentLoadable.class);
@@ -496,6 +487,18 @@ public class ActionInstaller {
                     e.printStackTrace();
                 }
             }
+        }
+
+        for(String resourcePath : components) {
+//            try {
+//                URL resURL = this.getClass().getResource(resourcePath);
+//                URLConnection resConn = resURL.openConnection();
+//                resConn.setUseCaches(false);
+//                refreshComponent(resConn.getInputStream(), springVueResource);
+            refreshComponent(this.getClass().getResourceAsStream(resourcePath), springVueResource);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
         }
 
         StringBuffer routerBuffer = new StringBuffer();
@@ -512,7 +515,8 @@ public class ActionInstaller {
             routerBuffer.deleteCharAt(routerBuffer.length() - 1);
         routerBuffer.append("];");
         buffer.append(routerBuffer).append("\n");
-        buffer.append("const router = new VueRouter({routes});");
+//        buffer.append("const router = new VueRouter({routes});");
+        buffer.append("const router = new VueRouter({hash: false, routes: routes});");
 
         buffer.append("Vue.mixin({data: function() { return {get groups() {return ")
                 .append(groupProvider.getGroupsJsonString()).append("; }, get activeParent() { return {\"code\": \"\" }; }}}});").append("\n");
