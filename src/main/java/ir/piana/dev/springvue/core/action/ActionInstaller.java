@@ -17,10 +17,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.awt.event.ActionListener;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
+import java.io.*;
 import java.net.URL;
 import java.security.SecureRandom;
 import java.util.*;
@@ -250,16 +247,26 @@ public class ActionInstaller {
 
             String templateString = theString.substring(theString.indexOf("<html-template>") + 15, theString.indexOf("</html-template>"))
                     .replaceAll("\\$bean\\$", beanName);
-            String scriptString = theString.substring(theString.indexOf("<script>") + 8, theString.indexOf("</script>"));
+            String vueScriptString = theString.substring(theString.indexOf("<vue-script>"), theString.indexOf("</vue-script>") + 13);
+            Document vueScriptDoc = dBuilder.parse(new InputSource(new StringReader(vueScriptString)));
+            NodeList entries = vueScriptDoc.getElementsByTagName("script");
+            for (int i=0; i<entries.getLength(); i++) {
+                Element element = (Element) entries.item(i);
+                if(element.getAttribute("for").equalsIgnoreCase("component")) {
+                    String scriptString = element.getTextContent();
+                    StringBuffer jsAppBuffer = new StringBuffer();
+                    jsApp = jsAppBuffer.append(scriptString).toString().replaceAll("\\$app\\$", appName)
+                            .replaceAll("\\$bean\\$", beanName)
+                            .replace("$template$",
+                                    Arrays.stream(templateString.split(System.getProperty("line.separator")))
+                                            .map(line -> line.trim()).collect(Collectors.joining("")));
+                } else if(element.getAttribute("for").equalsIgnoreCase("state")) {
 
-            StringBuffer jsAppBuffer = new StringBuffer();
-            jsApp = jsAppBuffer.append(scriptString).toString().replaceAll("\\$app\\$", appName)
-                    .replaceAll("\\$bean\\$", beanName)
-                    .replace("$template$",
-                            Arrays.stream(templateString.split(System.getProperty("line.separator")))
-                                    .map(line -> line.trim()).collect(Collectors.joining("")));
+                }
+            }
 
-            int startOfBeanIfExist = theString.indexOf("</script>") + 10;
+            int startOfBeanIfExist = theString.indexOf("</vue-script>") + 13;
+
             if (theString.length() > startOfBeanIfExist) {
                 String javaString = theString.substring(startOfBeanIfExist);
                 if(javaString == null || javaString.isEmpty() || !javaString.contains("<bean>")) {
