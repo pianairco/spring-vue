@@ -1,5 +1,4 @@
 <app name="three"></app>
-
 <template>
 <div>
     <h1>{{ message }}</h1>
@@ -7,7 +6,7 @@
 </div>
 </template>
 
-<script>
+<script for="component">
     Vue.component('$app$', {
         template: '$template$',
         data: function () {
@@ -23,6 +22,21 @@
             }
         }
     })
+</script>
+
+<script for="state">
+    {
+        formValue: {},
+        setFormValue: function(formValue) {
+            this.formValue = formValue;
+        },
+        setToForm: function(key, value) {
+            this.state.formValue[key] = value;
+        },
+        getFormValue: function() {
+            return this.state.formValue;
+        }
+    };
 </script>
 
 <bean>

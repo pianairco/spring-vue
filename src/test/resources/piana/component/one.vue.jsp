@@ -1,62 +1,62 @@
-<app name="one"></app>
+<app name="one">
+    <template>
+        <div>
+            <h1>{{ message }}</h1>
+            <input type="text" v-model="user.firstName" />
+            <input type="text" v-model="user.lastName" />
+            <button v-on:click="x()" >ok</button>
+            <two></two>
+        </div>
+    </template>
 
-<template>
-<div>
-    <h1>{{ message }}</h1>
-    <input type="text" v-model="user.firstName" />
-    <input type="text" v-model="user.lastName" />
-    <button v-on:click="x()" >ok</button>
-    <two></two>
-</div>
-</template>
-
-<script>
-    Vue.component('$app$', {
-        template: '$template$',
-        data: function() {
-            return {
-                user: {
-                    firstName: '',
-                    lastName: ''
-                },
-                message: 'Hello To Spring Vue'
+    <script>
+        Vue.component('$app$', {
+            template: '$template$',
+            data: function() {
+                return {
+                    user: {
+                        firstName: '',
+                        lastName: ''
+                    },
+                    message: 'Hello To Spring Vue'
+                }
+            },
+            methods: {
+                x: function () {
+                    axios.post('/action', this.user, {headers: {"action": "$bean$", "activity": "x"}})
+                        .then((response) => { this.message = response.data; })
+                        .catch((err) => { this.message = err; });
+                }
             }
-        },
-        methods: {
-            x: function () {
-                axios.post('/action', this.user, {headers: {"action": "$bean$", "activity": "x"}})
-                    .then((response) => { this.message = response.data; })
-                    .catch((err) => { this.message = err; });
-            }
-        }
-    });
-</script>
+        });
+    </script>
 
-<bean>
-    <import>
-        <%@ page import="org.springframework.beans.factory.annotation.Autowired" %>
-        <%@ page import="ir.piana.dev.springvue.core.sql.SQLExecutor" %>
-        <%@ page import="org.springframework.http.RequestEntity" %>
-        <%@ page import="org.springframework.http.ResponseEntity" %>
-        <%@ page import="java.util.function.Function" %>
-        <%@ page import="java.util.List" %>
-        <%@ page import="java.util.Map" %>
-        <%@ page import="ir.piana.dev.springvue.core.action.Action" %>
-    </import>
-    <action>
-        <%
-            class $VUE$ extends Action {
-                @Autowired
-                SQLExecutor sqlExecuter;
+    <bean>
+        <import>
+            <%@ page import="org.springframework.beans.factory.annotation.Autowired" %>
+            <%@ page import="ir.piana.dev.springvue.core.sql.SQLExecutor" %>
+            <%@ page import="org.springframework.http.RequestEntity" %>
+            <%@ page import="org.springframework.http.ResponseEntity" %>
+            <%@ page import="java.util.function.Function" %>
+            <%@ page import="java.util.List" %>
+            <%@ page import="java.util.Map" %>
+            <%@ page import="ir.piana.dev.springvue.core.action.Action" %>
+        </import>
+        <action>
+            <%
+                class $VUE$ extends Action {
+                    @Autowired
+                    SQLExecutor sqlExecuter;
 
-                public Function<RequestEntity, ResponseEntity> x = (r) -> {
-                    List<Object> objects = sqlExecuter.executeQuery("select * from users");
-                    Map body = (Map) r.getBody();
-                    String firstName = (String)body.get("firstName");
-                    String lastName = (String)body.get("lastName");
-                    return ResponseEntity.ok("Hello ".concat(firstName).concat(" ").concat(lastName));
-                };
-            }
-        %>
-    </action>
-</bean>
+                    public Function<RequestEntity, ResponseEntity> x = (r) -> {
+                        List<Object> objects = sqlExecuter.executeQuery("select * from users");
+                        Map body = (Map) r.getBody();
+                        String firstName = (String)body.get("firstName");
+                        String lastName = (String)body.get("lastName");
+                        return ResponseEntity.ok("Hello ".concat(firstName).concat(" ").concat(lastName));
+                    };
+                }
+            %>
+        </action>
+    </bean>
+</app>
