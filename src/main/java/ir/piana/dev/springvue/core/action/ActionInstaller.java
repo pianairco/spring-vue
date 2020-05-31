@@ -219,7 +219,7 @@ public class ActionInstaller {
 //        String jsApp = null;
         try {
             String theString = IOUtils.toString(inputStream, "UTF-8");
-            this.installComponent(theString);
+            this.installComponent(theString, null);
         } catch (IOException e) {
             error = e.getMessage();
         }
@@ -229,7 +229,7 @@ public class ActionInstaller {
         return this;
     }
 
-    private ActionInstaller installComponent(String theString) {
+    private ActionInstaller installComponent(String theString, SpringVueResource springVueResource) {
         String error = null;
         String jsApp = null;
         try {
@@ -243,17 +243,32 @@ public class ActionInstaller {
                 appName = eElement.getAttribute("name");
             }
 
-            String beanName = beanBaseName.concat(generateRandomString()).concat(String.valueOf(counter++));
+            String beanName = "";
+            if(springVueResource != null) {
+                final String appName2 = appName;
+                List<Map.Entry<String, String>> collect = springVueResource.getBeanMap().keySet().stream()
+                        .filter(key -> springVueResource.getBeanMap().get(key).getValue().equals(appName2))
+                        .map(key -> springVueResource.getBeanMap().get(key))
+                        .collect(Collectors.toList());
+                if(collect != null && !collect.isEmpty())
+                    beanName = collect.get(0).getKey();
+            } else {
+                beanName = beanBaseName.concat(generateRandomString()).concat(String.valueOf(counter++));
+            }
 
             String templateString = theString.substring(theString.indexOf("<html-template>") + 15, theString.indexOf("</html-template>"))
                     .replaceAll("\\$bean\\$", beanName);
-            String vueScriptString = theString.substring(theString.indexOf("<vue-script>"), theString.indexOf("</vue-script>") + 13);
-            Document vueScriptDoc = dBuilder.parse(new InputSource(new StringReader(vueScriptString)));
+
+            String vueScriptStringContent = theString.substring(theString.indexOf("<vue-script>") + 12, theString.indexOf("</vue-script>"));
+            String firstScript = vueScriptStringContent.substring(vueScriptStringContent.indexOf("<script"), vueScriptStringContent.indexOf(">") + 1);
+            String script = vueScriptStringContent.substring(vueScriptStringContent.indexOf("<script") + firstScript.length(), vueScriptStringContent.indexOf("</script>"));
+
+            Document vueScriptDoc = dBuilder.parse(new InputSource(new StringReader(firstScript.concat("</script>"))));
             NodeList entries = vueScriptDoc.getElementsByTagName("script");
-            for (int i=0; i<entries.getLength(); i++) {
+            for (int i = 0; i < entries.getLength(); i++) {
                 Element element = (Element) entries.item(i);
                 if(element.getAttribute("for").equalsIgnoreCase("component")) {
-                    String scriptString = element.getTextContent();
+                    String scriptString = script;
                     StringBuffer jsAppBuffer = new StringBuffer();
                     jsApp = jsAppBuffer.append(scriptString).toString().replaceAll("\\$app\\$", appName)
                             .replaceAll("\\$bean\\$", beanName)
@@ -265,40 +280,64 @@ public class ActionInstaller {
                 }
             }
 
-            int startOfBeanIfExist = theString.indexOf("</vue-script>") + 13;
+            String secondScriptContent = vueScriptStringContent.substring(vueScriptStringContent.indexOf("</script>") + 9);
+            String secondScript = secondScriptContent.substring(
+                    vueScriptStringContent.indexOf("<script"), vueScriptStringContent.indexOf(">") + 1);
+            script = secondScriptContent.substring(secondScriptContent.indexOf("<script") + secondScript.length(),
+                    secondScriptContent.indexOf("</script>"));
+            vueScriptDoc = dBuilder.parse(new InputSource(new StringReader(secondScript.concat("</script>"))));
+            entries = vueScriptDoc.getElementsByTagName("script");
+            for (int i = 0; i < entries.getLength(); i++) {
+                Element element = (Element) entries.item(i);
+                if(element.getAttribute("for").equalsIgnoreCase("component")) {
+                    String scriptString = script;
+                    StringBuffer jsAppBuffer = new StringBuffer();
+                    jsApp = jsAppBuffer.append(scriptString).toString().replaceAll("\\$app\\$", appName)
+                            .replaceAll("\\$bean\\$", beanName)
+                            .replace("$template$",
+                                    Arrays.stream(templateString.split(System.getProperty("line.separator")))
+                                            .map(line -> line.trim()).collect(Collectors.joining("")));
+                } else if(element.getAttribute("for").equalsIgnoreCase("state")) {
 
-            if (theString.length() > startOfBeanIfExist) {
-                String javaString = theString.substring(startOfBeanIfExist);
-                if(javaString == null || javaString.isEmpty() || !javaString.contains("<bean>")) {
-                    buffer.append(jsApp).append("\n");
-                    return this;
                 }
-                javaString = javaString.replaceAll("<%@ page import=\"", "import ");
-                javaString = javaString.replaceAll("\" %>", ";");
-                javaString = javaString.replaceAll("<%", "");
-                javaString = javaString.replaceAll("%>", "");
+            }
 
-                String beanString = javaString.substring(0, javaString.indexOf("<import>")).concat("</bean>");
-                String importString = javaString.substring(javaString.indexOf("<import>") + 8, javaString.indexOf("</import>"));
-                String classString = javaString.substring(javaString.indexOf("<action>") + 8, javaString.indexOf("</action>"));
+            if(springVueResource == null) {
+                int startOfBeanIfExist = theString.indexOf("</vue-script>") + 13;
 
-                StringBuffer classSourceBuffer = new StringBuffer();
+                if (theString.length() > startOfBeanIfExist) {
+                    String javaString = theString.substring(startOfBeanIfExist);
+                    if (javaString == null || javaString.isEmpty() || !javaString.contains("<bean>")) {
+                        buffer.append(jsApp).append("\n");
+                        return this;
+                    }
+                    javaString = javaString.replaceAll("<%@ page import=\"", "import ");
+                    javaString = javaString.replaceAll("\" %>", ";");
+                    javaString = javaString.replaceAll("<%", "");
+                    javaString = javaString.replaceAll("%>", "");
 
-                String aPackage = beanPackage;
-                String aClassName = beanName.substring(0, 1).toUpperCase() + beanName.substring(1);
+                    String beanString = javaString.substring(0, javaString.indexOf("<import>")).concat("</bean>");
+                    String importString = javaString.substring(javaString.indexOf("<import>") + 8, javaString.indexOf("</import>"));
+                    String classString = javaString.substring(javaString.indexOf("<action>") + 8, javaString.indexOf("</action>"));
 
-                classSourceBuffer.append("package ".concat(aPackage).concat(";\n"));
-                classSourceBuffer.append(Arrays.stream(importString.split(System.getProperty("line.separator")))
-                        .map(line -> line.trim()).collect(Collectors.joining("\n")));
-                classSourceBuffer.append("import org.springframework.stereotype.Component;\n");
-                classSourceBuffer.append("\n");
+                    StringBuffer classSourceBuffer = new StringBuffer();
 
-                classSourceBuffer.append("@Component(\"").append(beanName).append("\")\n");
-                classSourceBuffer.append(Arrays.stream(classString.split(System.getProperty("line.separator"))).map(line -> line.trim())
-                        .filter(line -> !line.isEmpty()).collect(Collectors.joining("\n")));
-                String classSource = classSourceBuffer.toString().replace("class $VUE$", "public class ".concat(aClassName));
-                Class aClass = ClassGenerator.registerClass(aPackage.concat(".").concat(aClassName).replaceAll("\\.", "/"), classSource.replace("$bean$", beanName));
-                beanMap.put(aPackage.concat(".").concat(aClassName), new AbstractMap.SimpleEntry<>(beanName, appName));
+                    String aPackage = beanPackage;
+                    String aClassName = beanName.substring(0, 1).toUpperCase() + beanName.substring(1);
+
+                    classSourceBuffer.append("package ".concat(aPackage).concat(";\n"));
+                    classSourceBuffer.append(Arrays.stream(importString.split(System.getProperty("line.separator")))
+                            .map(line -> line.trim()).collect(Collectors.joining("\n")));
+                    classSourceBuffer.append("import org.springframework.stereotype.Component;\n");
+                    classSourceBuffer.append("\n");
+
+                    classSourceBuffer.append("@Component(\"").append(beanName).append("\")\n");
+                    classSourceBuffer.append(Arrays.stream(classString.split(System.getProperty("line.separator"))).map(line -> line.trim())
+                            .filter(line -> !line.isEmpty()).collect(Collectors.joining("\n")));
+                    String classSource = classSourceBuffer.toString().replace("class $VUE$", "public class ".concat(aClassName));
+                    Class aClass = ClassGenerator.registerClass(aPackage.concat(".").concat(aClassName).replaceAll("\\.", "/"), classSource.replace("$bean$", beanName));
+                    beanMap.put(aPackage.concat(".").concat(aClassName), new AbstractMap.SimpleEntry<>(beanName, appName));
+                }
             }
         } catch (IOException e) {
             error = e.getMessage();
@@ -320,7 +359,8 @@ public class ActionInstaller {
 //        String jsApp = null;
         try {
             String theString = IOUtils.toString(inputStream, "UTF-8");
-            refreshComponent(theString, springVueResource);
+            installComponent(theString, springVueResource);
+//            refreshComponent(theString, springVueResource);
         } catch (IOException e) {
             error = e.getMessage();
         }
@@ -330,53 +370,53 @@ public class ActionInstaller {
         return this;
     }
 
-    private ActionInstaller refreshComponent(String theString, SpringVueResource springVueResource) {
-        String error = null;
-        String jsApp = null;
-        try {
-            String appString = theString.substring(theString.indexOf("<app "), theString.indexOf("</app>") + 6);
-            Document doc = dBuilder.parse(new InputSource(new StringReader(appString)));
-            NodeList nList = doc.getElementsByTagName("app");
-            Node item = nList.item(0);
-            String appName = null;
-            if (item.getNodeType() == Node.ELEMENT_NODE) {
-                Element eElement = (Element) item;
-                appName = eElement.getAttribute("name");
-            }
-
-            final String appName2 = appName;
-            List<Map.Entry<String, String>> collect = springVueResource.getBeanMap().keySet().stream()
-                    .filter(key -> springVueResource.getBeanMap().get(key).getValue().equals(appName2))
-                    .map(key -> springVueResource.getBeanMap().get(key))
-                    .collect(Collectors.toList());
-
-            String beanName = "";
-            if(collect != null && !collect.isEmpty())
-                beanName = collect.get(0).getKey();
-
-            String templateString = theString.substring(theString.indexOf("<html-template>") + 15, theString.indexOf("</html-template>"))
-                    .replaceAll("\\$bean\\$", beanName);
-            String scriptString = theString.substring(theString.indexOf("<script>") + 8, theString.indexOf("</script>"));
-
-
-
-
-            StringBuffer jsAppBuffer = new StringBuffer();
-            jsApp = jsAppBuffer.append(scriptString).toString().replaceAll("\\$app\\$", appName)
-                    .replaceAll("\\$bean\\$", beanName)
-                    .replace("$template$",
-                            Arrays.stream(templateString.split(System.getProperty("line.separator")))
-                                    .map(line -> line.trim()).collect(Collectors.joining("")));
-        } catch (IOException e) {
-            error = e.getMessage();
-        } catch (SAXException e) {
-            error = e.getMessage();
-        }
-        if(error != null)
-            throw new RuntimeException(error);
-        buffer.append(jsApp).append("\n");
-        return this;
-    }
+//    private ActionInstaller refreshComponent(String theString, SpringVueResource springVueResource) {
+//        String error = null;
+//        String jsApp = null;
+//        try {
+//            String appString = theString.substring(theString.indexOf("<app "), theString.indexOf("</app>") + 6);
+//            Document doc = dBuilder.parse(new InputSource(new StringReader(appString)));
+//            NodeList nList = doc.getElementsByTagName("app");
+//            Node item = nList.item(0);
+//            String appName = null;
+//            if (item.getNodeType() == Node.ELEMENT_NODE) {
+//                Element eElement = (Element) item;
+//                appName = eElement.getAttribute("name");
+//            }
+//
+//            final String appName2 = appName;
+//            List<Map.Entry<String, String>> collect = springVueResource.getBeanMap().keySet().stream()
+//                    .filter(key -> springVueResource.getBeanMap().get(key).getValue().equals(appName2))
+//                    .map(key -> springVueResource.getBeanMap().get(key))
+//                    .collect(Collectors.toList());
+//
+//            String beanName = "";
+//            if(collect != null && !collect.isEmpty())
+//                beanName = collect.get(0).getKey();
+//
+//            String templateString = theString.substring(theString.indexOf("<html-template>") + 15, theString.indexOf("</html-template>"))
+//                    .replaceAll("\\$bean\\$", beanName);
+//            String scriptString = theString.substring(theString.indexOf("<script>") + 8, theString.indexOf("</script>"));
+//
+//
+//
+//
+//            StringBuffer jsAppBuffer = new StringBuffer();
+//            jsApp = jsAppBuffer.append(scriptString).toString().replaceAll("\\$app\\$", appName)
+//                    .replaceAll("\\$bean\\$", beanName)
+//                    .replace("$template$",
+//                            Arrays.stream(templateString.split(System.getProperty("line.separator")))
+//                                    .map(line -> line.trim()).collect(Collectors.joining("")));
+//        } catch (IOException e) {
+//            error = e.getMessage();
+//        } catch (SAXException e) {
+//            error = e.getMessage();
+//        }
+//        if(error != null)
+//            throw new RuntimeException(error);
+//        buffer.append(jsApp).append("\n");
+//        return this;
+//    }
 
     public Map<String, Map.Entry<String, Map<String, String>>> route(Map<String, Object> map, String parentPath) {
         Map<String, Map.Entry<String, Map<String, String>>> routeMap = new LinkedHashMap<>();
@@ -448,7 +488,7 @@ public class ActionInstaller {
             Set<Class<? extends VueComponentLoadable>> classes = reflections.getSubTypesOf(VueComponentLoadable.class);
             for (Class loadable : classes) {
                 try {
-                    installComponent(((VueComponentLoadable)loadable.newInstance()).getComponentString());
+                    installComponent(((VueComponentLoadable)loadable.newInstance()).getComponentString(), null);
                 } catch (InstantiationException e) {
                     e.printStackTrace();
                 } catch (IllegalAccessException e) {
@@ -487,7 +527,7 @@ public class ActionInstaller {
             Set<Class<? extends VueComponentLoadable>> classes = reflections.getSubTypesOf(VueComponentLoadable.class);
             for (Class loadable : classes) {
                 try {
-                    refreshComponent(((VueComponentLoadable)loadable.newInstance()).getComponentString(), springVueResource);
+                    installComponent(((VueComponentLoadable)loadable.newInstance()).getComponentString(), springVueResource);
                 } catch (InstantiationException e) {
                     e.printStackTrace();
                 } catch (IllegalAccessException e) {
