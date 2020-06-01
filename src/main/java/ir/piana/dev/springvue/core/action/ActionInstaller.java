@@ -29,12 +29,13 @@ public class ActionInstaller {
     private GroupProvider groupProvider;
     private List<String> components = new ArrayList<>();
     private String routePath;
-    private Map<String, Map.Entry<String, Object>> routeMap = new LinkedHashMap<>();
+    private List<RouteModel> routeMap = new ArrayList<>();
     private String beanBaseName;
     private String beanPackage;
     private List<String> loadFrom;
     StringBuffer buffer = new StringBuffer();
     Set<String> stateNames = new HashSet<>();
+    Map<String, StateModel> stateNameMap = new LinkedHashMap<>();
     Map<String, Map.Entry<String, String>> beanMap = new LinkedHashMap<>();
 
     private static String appComponent;
@@ -202,7 +203,7 @@ public class ActionInstaller {
 
     private void loadRoutes() {
 //        if (loadFrom.contains("resource")) {
-            loadRoutesFromResource();
+        loadRoutesFromResource();
 //        }
     }
 
@@ -280,10 +281,14 @@ public class ActionInstaller {
                     Document stateDoc = dBuilder.parse(new InputSource(new StringReader("<script>" + script + "</script>")));
                     NodeList stateEntries = stateDoc.getElementsByTagName("state");
                     for (int j = 0; j < stateEntries.getLength(); j++) {
-                        Element stateElement = (Element) stateEntries.item(i);
+                        Element stateElement = (Element) stateEntries.item(j);
                         String name = stateElement.getAttribute("name");
-                        if(name != null && !name.isEmpty())
+                        String type = stateElement.getAttribute("type");
+                        String value = stateElement.getAttribute("value");
+                        if(name != null && !name.isEmpty() && !stateNames.contains(name)) {
                             stateNames.add(name);
+                            stateNameMap.put(name, new StateModel(name, type, value));
+                        }
                     }
                 }
             }
@@ -309,10 +314,14 @@ public class ActionInstaller {
                     Document stateDoc = dBuilder.parse(new InputSource(new StringReader("<script>" + script + "</script>")));
                     NodeList stateEntries = stateDoc.getElementsByTagName("state");
                     for (int j = 0; j < stateEntries.getLength(); j++) {
-                        Element stateElement = (Element) stateEntries.item(i);
+                        Element stateElement = (Element) stateEntries.item(j);
                         String name = stateElement.getAttribute("name");
-                        if(name != null && !name.isEmpty())
+                        String type = stateElement.getAttribute("type");
+                        String value = stateElement.getAttribute("value");
+                        if(name != null && !name.isEmpty() && !stateNames.contains(name)) {
                             stateNames.add(name);
+                            stateNameMap.put(name, new StateModel(name, type, value));
+                        }
                     }
                 }
             }
@@ -433,8 +442,8 @@ public class ActionInstaller {
 //        return this;
 //    }
 
-    public Map<String, Map.Entry<String, Map<String, String>>> route(Map<String, Object> map, String parentPath) {
-        Map<String, Map.Entry<String, Map<String, String>>> routeMap = new LinkedHashMap<>();
+    public List<RouteModel> route(Map<String, Object> map, String parentPath) {
+        List<RouteModel> routeMap = new ArrayList<>();
         parentPath = parentPath.equals("//") ? "" : parentPath;
         for (String key : map.keySet()) {
             if (map.get(key) instanceof String) {
@@ -446,14 +455,36 @@ public class ActionInstaller {
                         sign = "@";
                     }
                 }
-                routeMap.put(sign.concat(parentPath).concat(key), new AbstractMap.SimpleEntry(val, null));
+                if(sign.equalsIgnoreCase("@"))
+                    routeMap.add(new RouteModel(sign.concat(parentPath).concat(key), val, null, null, null));
+                else
+                    routeMap.add(new RouteModel(sign.concat(parentPath).concat(key), null, val, null, null));
             } else {
                 Map<String, Object> childMap = (Map<String, Object>) map.get(key);
+                LinkedHashMap props = null;
+                if(childMap.containsKey("props")) {
+                    props = (LinkedHashMap) childMap.get("props");
+                }
+                String component = null;
+                String path = null;
                 if(childMap.containsKey("component")) {
-                    String component = (String) childMap.get("component");
-                    routeMap.put(parentPath.concat(key), new AbstractMap.SimpleEntry(component, route((Map<String, Object>)childMap.get("children"), "")));
-                } else
-                    routeMap.putAll(route((Map<String, Object>)map.get(key), parentPath.concat(key).concat("/")));
+                    component = (String) childMap.get("component");
+                } else {
+                    path = parentPath.concat(key).concat("/");
+                }
+
+                Map<String, Object> children = (Map<String, Object>) childMap.get("children");
+                if(children != null && !children.isEmpty()) {
+                    routeMap.add(new RouteModel(parentPath.concat(key), null, component, route(children, ""), props));
+                } else {
+                    if(component != null)
+                        routeMap.add(new RouteModel(parentPath.concat(key), null, component, null, props));
+                    else {
+                        map.get(key);
+                        routeMap.add(new RouteModel(path, null, null, route((Map<String, Object>)map.get(key), path), props));
+                    }
+
+                }
             }
         }
         return routeMap;
@@ -463,7 +494,7 @@ public class ActionInstaller {
         String error = null;
         try {
             Map<String, Object> map = mapper.readValue(inputStream, Map.class);
-            routeMap.putAll(route((Map)map.get("route"), ""));
+            routeMap.addAll(route((Map)map.get("route"), ""));
         } catch (IOException e) {
             error = e.getMessage();
         }
@@ -477,21 +508,54 @@ public class ActionInstaller {
         return this;
     }
 
-    StringBuffer installRouter(Map<String, Map.Entry<String, Object>> map, String key) {
+    StringBuffer installRouter(List<RouteModel> models) {
         StringBuffer routerBuffer = new StringBuffer();
-        if(key.startsWith("@"))
-            routerBuffer.append("{path:'" + key.substring(1) + "', redirect:'").append(map.get(key).getKey()).append("'},");
-        else {
-            if(map.get(key).getValue() == null)
-                routerBuffer.append("{path:'" + key + "', component:").append(map.get(key).getKey()).append("},");
+        for(RouteModel model : models) {
+            if(model.path.startsWith("@"))
+                routerBuffer.append("{path:'" + model.path.substring(1) + "', redirect:'").append(model.redirect).append("'},");
             else {
-                routerBuffer.append("{path:'" + key + "', component:").append(map.get(key).getKey()).append(",")
-                        .append("children:[");
-                for (String k : ((Map<String, Map.Entry<String, Object>>)map.get(key).getValue()).keySet()) {
-                    routerBuffer.append(installRouter((Map<String, Map.Entry<String, Object>>)map.get(key).getValue(), k));
+                if(model.childeren == null || model.childeren.isEmpty()) {
+                    routerBuffer.append("{path:'" + model.path + "', component:").append(model.component)
+                            .append(",");
+                    if(model.props != null) {
+                        Map<String, Object> pMap = (Map<String, Object>)model.props;
+                        routerBuffer.append("props: {");
+                        for(String key: pMap.keySet()) {
+                            routerBuffer.append(key).append(":");
+                            if(pMap.get(key) instanceof String)
+                                routerBuffer.append("'" + pMap.get(key) + "'");
+                            else
+                                routerBuffer.append(pMap.get(key));
+                            routerBuffer.append(",");
+                        }
+                        routerBuffer.deleteCharAt(routerBuffer.length() - 1);
+                        routerBuffer.append("},");
+                    }
+                    routerBuffer.deleteCharAt(routerBuffer.length() - 1);
+                    routerBuffer.append("},");
+                } else {
+                    routerBuffer.append("{path:'" + model.path + "', component:").append(model.component)
+                            .append(",");
+                    if(model.props != null) {
+                        Map<String, Object> pMap = (Map<String, Object>)model.props;
+                        routerBuffer.append("props: {");
+                        for(String key: pMap.keySet()) {
+                            routerBuffer.append(key).append(":");
+                            if(pMap.get(key) instanceof String)
+                                routerBuffer.append("'" + pMap.get(key) + "'");
+                            else
+                                routerBuffer.append(pMap.get(key));
+                            routerBuffer.append(",");
+                        }
+                        routerBuffer.deleteCharAt(routerBuffer.length() - 1);
+                        routerBuffer.append("},");
+                    }
+                    routerBuffer.append("children:[");
+                    routerBuffer.append(installRouter(model.childeren));
+
+                    routerBuffer.deleteCharAt(routerBuffer.length() - 1);
+                    routerBuffer.append("]},");
                 }
-                routerBuffer.deleteCharAt(routerBuffer.length() - 1);
-                routerBuffer.append("]},");
             }
         }
         return routerBuffer;
@@ -519,9 +583,7 @@ public class ActionInstaller {
         StringBuffer routerBuffer = new StringBuffer();
 //        route(this.getClass().getResourceAsStream(routePath));
         routerBuffer.append("const routes = [");
-        for (String key : routeMap.keySet()) {
-            routerBuffer.append(installRouter(routeMap, key));
-        }
+        routerBuffer.append(installRouter(routeMap));
         if(routeMap.size() > 0)
             routerBuffer.deleteCharAt(routerBuffer.length() - 1);
         routerBuffer.append("];");
@@ -535,7 +597,21 @@ public class ActionInstaller {
         buffer.append("const store = {");
         buffer.append("state: {");
         for(String stateName : stateNames) {
-            buffer.append(stateName).append(": {},");
+            StateModel stateModel = stateNameMap.get(stateName);
+            buffer.append(stateName).append(":");
+            if (stateModel.getValue() != null && !stateModel.getValue().isEmpty()) {
+                if (stateModel.getValue().equalsIgnoreCase("null")) {
+                    buffer.append("null,");
+                } else if (stateModel.getType().equalsIgnoreCase("string")) {
+                    buffer.append("'" + stateModel.getValue() + "',");
+                } else {
+                    buffer.append(stateModel.getValue() + ",");
+                }
+            } else if (stateModel.getType() != null && !stateModel.getType().isEmpty()) {
+                buffer.append(stateModel.getType() + ",");
+            } else {
+                buffer.append("Object,");
+            }
         }
         buffer.deleteCharAt(buffer.length() - 1);
         buffer.append("}};");
@@ -574,13 +650,7 @@ public class ActionInstaller {
         StringBuffer routerBuffer = new StringBuffer();
 //        route(this.getClass().getResourceAsStream(routePath));
         routerBuffer.append("const routes = [");
-        for (String key : routeMap.keySet()) {
-            routerBuffer.append(installRouter(routeMap, key));
-//            if(key.startsWith("@"))
-//                routerBuffer.append("{path:'" + key.substring(1) + "', redirect:'").append(routeMap.get(key)).append("'},");
-//            else
-//                routerBuffer.append("{path:'" + key + "', component:").append(routeMap.get(key)).append("},");
-        }
+        routerBuffer.append(installRouter(routeMap));
         if(routeMap.size() > 0)
             routerBuffer.deleteCharAt(routerBuffer.length() - 1);
         routerBuffer.append("];");
@@ -598,7 +668,21 @@ public class ActionInstaller {
         buffer.append("const store = {");
         buffer.append("state: {");
         for(String stateName : stateNames) {
-            buffer.append(stateName).append(": {},");
+            StateModel stateModel = stateNameMap.get(stateName);
+            buffer.append(stateName).append(":");
+            if (stateModel.getValue() != null && !stateModel.getValue().isEmpty()) {
+                if (stateModel.getValue().equalsIgnoreCase("null")) {
+                    buffer.append("null,");
+                } else if (stateModel.getType().equalsIgnoreCase("string")) {
+                    buffer.append("'" + stateModel.getValue() + "',");
+                } else {
+                    buffer.append(stateModel.getValue() + ",");
+                }
+            } else if (stateModel.getType() != null && !stateModel.getType().isEmpty()) {
+                buffer.append(stateModel.getType() + ",");
+            } else {
+                buffer.append("Object,");
+            }
         }
         buffer.deleteCharAt(buffer.length() - 1);
         buffer.append("}};");
@@ -632,6 +716,104 @@ public class ActionInstaller {
         public void refresh() {
             SpringVueResource springVueResource = ActionInstaller.refreshSpringVueResource(this, groupProvider);
             this.vueApp = springVueResource.getVueApp();
+        }
+    }
+
+    public static class StateModel {
+        private String name;
+        private String type;
+        private String value;
+
+        public StateModel() {
+        }
+
+        public StateModel(String name, String type, String value) {
+            this.name = name;
+            this.type = type;
+            this.value = value;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String value) {
+            this.value = value;
+        }
+    }
+
+    public static class RouteModel {
+        private String path;
+        private String redirect;
+        private String component;
+        private List<RouteModel> childeren;
+        private Object props;
+
+        public RouteModel() {
+        }
+
+        public RouteModel(String path, String redirect, String component, List<RouteModel> childeren, Object props) {
+            this.path = path;
+            this.redirect = redirect;
+            this.component = component;
+            this.childeren = childeren;
+            this.props = props;
+        }
+
+        public String getPath() {
+            return path;
+        }
+
+        public void setPath(String path) {
+            this.path = path;
+        }
+
+        public String getRedirect() {
+            return redirect;
+        }
+
+        public void setRedirect(String redirect) {
+            this.redirect = redirect;
+        }
+
+        public String getComponent() {
+            return component;
+        }
+
+        public void setComponent(String component) {
+            this.component = component;
+        }
+
+        public List<RouteModel> getChilderen() {
+            return childeren;
+        }
+
+        public void setChilderen(List<RouteModel> childeren) {
+            this.childeren = childeren;
+        }
+
+        public Object getProps() {
+            return props;
+        }
+
+        public void setProps(Object props) {
+            this.props = props;
         }
     }
 }
