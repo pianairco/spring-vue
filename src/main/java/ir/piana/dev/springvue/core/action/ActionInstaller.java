@@ -34,6 +34,7 @@ public class ActionInstaller {
     private String beanPackage;
     private List<String> loadFrom;
     StringBuffer buffer = new StringBuffer();
+    Set<String> stateNames = new HashSet<>();
     Map<String, Map.Entry<String, String>> beanMap = new LinkedHashMap<>();
 
     private static String appComponent;
@@ -276,7 +277,14 @@ public class ActionInstaller {
                                     Arrays.stream(templateString.split(System.getProperty("line.separator")))
                                             .map(line -> line.trim()).collect(Collectors.joining("")));
                 } else if(element.getAttribute("for").equalsIgnoreCase("state")) {
-
+                    Document stateDoc = dBuilder.parse(new InputSource(new StringReader("<script>" + script + "</script>")));
+                    NodeList stateEntries = stateDoc.getElementsByTagName("state");
+                    for (int j = 0; j < stateEntries.getLength(); j++) {
+                        Element stateElement = (Element) stateEntries.item(i);
+                        String name = stateElement.getAttribute("name");
+                        if(name != null && !name.isEmpty())
+                            stateNames.add(name);
+                    }
                 }
             }
 
@@ -298,7 +306,14 @@ public class ActionInstaller {
                                     Arrays.stream(templateString.split(System.getProperty("line.separator")))
                                             .map(line -> line.trim()).collect(Collectors.joining("")));
                 } else if(element.getAttribute("for").equalsIgnoreCase("state")) {
-
+                    Document stateDoc = dBuilder.parse(new InputSource(new StringReader("<script>" + script + "</script>")));
+                    NodeList stateEntries = stateDoc.getElementsByTagName("state");
+                    for (int j = 0; j < stateEntries.getLength(); j++) {
+                        Element stateElement = (Element) stateEntries.item(i);
+                        String name = stateElement.getAttribute("name");
+                        if(name != null && !name.isEmpty())
+                            stateNames.add(name);
+                    }
                 }
             }
 
@@ -517,6 +532,14 @@ public class ActionInstaller {
         buffer.append("const groups = ").append(groupProvider.getGroupsJsonString()).append(";");
 //        buffer.append(notFoundComponent).append("\n");
 //        buffer.append(vLinkComponent).append("\n");
+        buffer.append("const store = {");
+        buffer.append("state: {");
+        for(String stateName : stateNames) {
+            buffer.append(stateName).append(": {},");
+        }
+        buffer.deleteCharAt(buffer.length() - 1);
+        buffer.append("}};");
+
         buffer.append(appComponent).append("\n");
         return new DefaultSpringVueResource(buffer.toString(), beanMap, groupProvider);
     }
@@ -571,6 +594,15 @@ public class ActionInstaller {
 //        buffer.append("const groups = ").append(groupProvider.getGroupsJsonString()).append(";");
         buffer.append(notFoundComponent).append("\n");
 //        buffer.append(vLinkComponent).append("\n");
+
+        buffer.append("const store = {");
+        buffer.append("state: {");
+        for(String stateName : stateNames) {
+            buffer.append(stateName).append(": {},");
+        }
+        buffer.deleteCharAt(buffer.length() - 1);
+        buffer.append("}};");
+
         buffer.append(appComponent).append("\n");
         return new DefaultSpringVueResource(buffer.toString(), beanMap, groupProvider);
     }
