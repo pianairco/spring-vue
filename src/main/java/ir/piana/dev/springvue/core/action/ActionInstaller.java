@@ -534,27 +534,31 @@ public class ActionInstaller {
                     routerBuffer.deleteCharAt(routerBuffer.length() - 1);
                     routerBuffer.append("},");
                 } else {
-                    routerBuffer.append("{path:'" + model.path + "', component:").append(model.component)
-                            .append(",");
-                    if(model.props != null) {
-                        Map<String, Object> pMap = (Map<String, Object>)model.props;
-                        routerBuffer.append("props: {");
-                        for(String key: pMap.keySet()) {
-                            routerBuffer.append(key).append(":");
-                            if(pMap.get(key) instanceof String)
-                                routerBuffer.append("'" + pMap.get(key) + "'");
-                            else
-                                routerBuffer.append(pMap.get(key));
-                            routerBuffer.append(",");
+                    if(model.component != null && !model.component.isEmpty()) {
+                        routerBuffer.append("{path:'" + model.path + "', component:").append(model.component)
+                                .append(",");
+                        if (model.props != null) {
+                            Map<String, Object> pMap = (Map<String, Object>) model.props;
+                            routerBuffer.append("props: {");
+                            for (String key : pMap.keySet()) {
+                                routerBuffer.append(key).append(":");
+                                if (pMap.get(key) instanceof String)
+                                    routerBuffer.append("'" + pMap.get(key) + "'");
+                                else
+                                    routerBuffer.append(pMap.get(key));
+                                routerBuffer.append(",");
+                            }
+                            routerBuffer.deleteCharAt(routerBuffer.length() - 1);
+                            routerBuffer.append("},");
                         }
-                        routerBuffer.deleteCharAt(routerBuffer.length() - 1);
-                        routerBuffer.append("},");
-                    }
-                    routerBuffer.append("children:[");
-                    routerBuffer.append(installRouter(model.childeren));
+                        routerBuffer.append("children:[");
+                        routerBuffer.append(installRouter(model.childeren));
 
-                    routerBuffer.deleteCharAt(routerBuffer.length() - 1);
-                    routerBuffer.append("]},");
+                        routerBuffer.deleteCharAt(routerBuffer.length() - 1);
+                        routerBuffer.append("]},");
+                    } else {
+                        routerBuffer.append(installRouter(model.childeren));
+                    }
                 }
             }
         }
